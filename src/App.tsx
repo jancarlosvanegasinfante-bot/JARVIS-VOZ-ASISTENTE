@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Smartphone, LayoutDashboard, Volume2, VolumeX, ShieldCheck, Zap, Sparkles } from 'lucide-react';
+import { Smartphone, LayoutDashboard, Volume2, VolumeX, ShieldCheck, Zap, Sparkles, Mic } from 'lucide-react';
 import { PhoneFrame } from './components/PhoneFrame';
 import { Dashboard } from './components/Dashboard';
 import { INITIAL_CONTACTS, INITIAL_SALES_DATA } from './data/mockData';
@@ -178,16 +178,18 @@ export default function App() {
       {/* Immersive Header Navbar */}
       <header className="bg-[#141418]/90 border-b border-white/10 sticky top-0 z-50 backdrop-blur-md px-6 py-3.5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full border-2 border-[#00f2ff] flex items-center justify-center shadow-[0_0_15px_rgba(0,242,255,0.4)]">
-              <div className="w-2.5 h-2.5 bg-[#00f2ff] rounded-full animate-ping" />
+          <div className="flex items-center gap-3">
+            <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#00f2ff]/20 to-[#0066ff]/20 border border-[#00f2ff]/50 flex items-center justify-center text-[#00f2ff] shadow-[0_0_20px_rgba(0,242,255,0.4)] group">
+              <Mic className="w-5 h-5 text-[#00f2ff] animate-pulse" />
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#00f2ff] border-2 border-[#141418] shadow-[0_0_8px_#00f2ff]" />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tighter uppercase italic flex items-center gap-2">
-                JARVIS CORE <span className="text-[#00f2ff] font-mono font-normal text-xs not-italic">v1.0.4-STABLE</span>
+              <h1 className="text-lg font-black tracking-tight uppercase italic flex items-center gap-2">
+                JARVIS VOICE <span className="text-[#00f2ff] font-mono font-bold text-xs not-italic bg-[#00f2ff]/10 px-2 py-0.5 rounded border border-[#00f2ff]/30">v1.0.4</span>
               </h1>
-              <p className="text-[10px] text-gray-400 font-mono tracking-widest uppercase">
-                Neural Intent Processor : Active
+              <p className="text-[10px] text-gray-400 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                Asistente Inteligente de Voz
               </p>
             </div>
           </div>
