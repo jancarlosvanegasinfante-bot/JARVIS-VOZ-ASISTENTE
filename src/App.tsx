@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Smartphone, LayoutDashboard, Volume2, VolumeX, ShieldCheck, Zap, Sparkles, Mic } from 'lucide-react';
 import { PhoneFrame } from './components/PhoneFrame';
 import { Dashboard } from './components/Dashboard';
+import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { INITIAL_CONTACTS, INITIAL_SALES_DATA } from './data/mockData';
 import { Contact, CommandLog, IntentResult, SalesData } from './types';
 import { audioEngine } from './utils/audioSynth';
@@ -294,6 +295,9 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* PWA Floating Native Download Prompt */}
+      <PWAInstallPrompt />
     </div>
   );
 }

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" fill="none">
+  <rect width="192" height="192" rx="40" fill="#0a0a0f"/>
+  <circle cx="96" cy="96" r="70" fill="url(#cyan-grad)" opacity="0.15"/>
+  <circle cx="96" cy="96" r="50" stroke="#00f2ff" stroke-width="3" stroke-dasharray="6 4" opacity="0.6"/>
+  <g transform="translate(56, 56) scale(3.333)">
+    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" fill="#00f2ff"/>
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="#00f2ff" stroke-width="2" stroke-linecap="round"/>
+    <line x1="12" y1="19" x2="12" y2="22" stroke="#00f2ff" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  <defs>
+    <radialGradient id="cyan-grad" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(96 96) rotate(90) scale(70)">
+      <stop stop-color="#00f2ff"/>
+      <stop offset="1" stop-color="#00f2ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+</svg>
