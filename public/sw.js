@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jarvis-pwa-v2';
+const CACHE_NAME = 'jarvis-pwa-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -6,7 +6,9 @@ const ASSETS_TO_CACHE = [
   '/icon-192.png',
   '/icon-512.png',
   '/icon-192.svg',
-  '/icon-512.svg'
+  '/icon-512.svg',
+  '/screenshot-mobile.png',
+  '/screenshot-desktop.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -37,7 +39,6 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Fetch background update
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
