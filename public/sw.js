@@ -1,8 +1,10 @@
-const CACHE_NAME = 'jarvis-voice-v1';
+const CACHE_NAME = 'jarvis-pwa-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png',
   '/icon-192.svg',
   '/icon-512.svg'
 ];
@@ -31,10 +33,11 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Return cached asset, update in background
+        // Fetch background update
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));

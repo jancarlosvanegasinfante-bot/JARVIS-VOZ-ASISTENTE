@@ -232,6 +232,9 @@ Devuelve un objeto JSON estricto con la siguiente estructura:
     });
   });
 
+  // Serve public folder for PWA assets (manifest.json, sw.js, PNG icons)
+  app.use(express.static(path.join(process.cwd(), 'public')));
+
   // Vite middleware in dev
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

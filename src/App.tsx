@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Smartphone, LayoutDashboard, Volume2, VolumeX, ShieldCheck, Zap, Sparkles, Mic } from 'lucide-react';
+import { Smartphone, LayoutDashboard, Volume2, VolumeX, ShieldCheck, Zap, Sparkles, Mic, Download } from 'lucide-react';
 import { PhoneFrame } from './components/PhoneFrame';
 import { Dashboard } from './components/Dashboard';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
@@ -241,6 +241,15 @@ export default function App() {
               title={ttsEnabled ? 'Voz TTS Activada' : 'Voz TTS Silenciada'}
             >
               {ttsEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('open-pwa-install'))}
+              className="bg-gradient-to-r from-[#00f2ff] to-[#0088ff] hover:brightness-110 text-black font-extrabold text-[11px] uppercase tracking-wider px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-[0_0_15px_rgba(0,242,255,0.4)] active:scale-95 transition"
+              title="Instalar JARVIS como App Nativa"
+            >
+              <Download className="w-3.5 h-3.5 stroke-[3]" />
+              <span className="hidden sm:inline">INSTALAR APP</span>
             </button>
           </div>
         </div>
