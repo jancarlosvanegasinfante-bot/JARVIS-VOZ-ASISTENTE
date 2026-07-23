@@ -98,16 +98,16 @@ export const PhoneFrame: React.FC<PhoneFrameProps> = ({
   };
 
   return (
-    <div className="relative w-full max-w-sm mx-auto h-[680px] bg-[#0a0a0c] rounded-[42px] border-[10px] border-[#141418] shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col justify-between ring-1 ring-white/10">
+    <div className="relative w-full md:max-w-sm mx-auto h-screen md:h-[680px] bg-[#0a0a0c] md:rounded-[42px] border-0 md:border-[10px] border-[#141418] md:shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col justify-between md:ring-1 ring-white/10">
       {/* Phone Speaker & Camera Notch */}
-      <div className="absolute top-0 inset-x-0 h-6 bg-[#141418] z-50 flex items-center justify-center rounded-b-xl border-b border-white/5">
+      <div className="absolute top-0 inset-x-0 h-6 bg-[#141418] z-50 hidden md:flex items-center justify-center rounded-b-xl border-b border-white/5">
         <div className="w-16 h-3 bg-[#0a0a0c] rounded-full flex items-center justify-center">
           <div className="w-2.5 h-2.5 rounded-full bg-[#141418]" />
         </div>
       </div>
 
       {/* Android Top Status Bar */}
-      <div className="pt-7 px-5 pb-1 flex items-center justify-between text-[11px] text-gray-300 font-mono font-semibold z-30 bg-gradient-to-b from-[#0a0a0c] to-transparent">
+      <div className="pt-7 px-5 pb-1 hidden md:flex items-center justify-between text-[11px] text-gray-300 font-mono font-semibold z-30 bg-gradient-to-b from-[#0a0a0c] to-transparent">
         <span>{currentTime}</span>
         <div className="flex items-center gap-1.5 text-gray-400">
           <Wifi className="w-3.5 h-3.5 text-[#00f2ff]" />
@@ -267,7 +267,7 @@ export const PhoneFrame: React.FC<PhoneFrameProps> = ({
       </div>
 
       {/* Android Bottom Navigation Bar */}
-      <div className="h-6 bg-[#141418] flex items-center justify-center z-30 border-t border-white/5">
+      <div className="h-6 bg-[#141418] hidden md:flex items-center justify-center z-30 border-t border-white/5">
         <div className="w-28 h-1 bg-white/20 rounded-full" />
       </div>
     </div>

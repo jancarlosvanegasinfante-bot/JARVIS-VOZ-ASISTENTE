@@ -1,11 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Smartphone, LayoutDashboard, Volume2, VolumeX, ShieldCheck, Zap, Sparkles, Mic, Download } from 'lucide-react';
+import { Smartphone, LayoutDashboard, Volume2, VolumeX, ShieldCheck, Zap, Sparkles, Mic } from 'lucide-react';
 import { PhoneFrame } from './components/PhoneFrame';
 import { Dashboard } from './components/Dashboard';
-import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { INITIAL_CONTACTS, INITIAL_SALES_DATA } from './data/mockData';
 import { Contact, CommandLog, IntentResult, SalesData } from './types';
 import { audioEngine } from './utils/audioSynth';
+
+// Puente hacia la app nativa de Android (solo existe cuando corres dentro
+// del APK de Jarvis; en el navegador normal simplemente no está definido
+// y todo sigue funcionando igual que ahora, sin control real del celular).
+declare global {
+  interface Window {
+    AndroidBridge?: {
+      executeAction: (json: string) => void;
+      isAccessibilityEnabled: () => boolean;
+      openAccessibilitySettings: () => void;
+    };
+  }
+}
 
 export default function App() {
   const [activeView, setActiveView] = useState<'phone' | 'dashboard'>('phone');
@@ -124,6 +136,13 @@ export default function App() {
         // Sound Feedback
         audioEngine.playSuccessPing();
 
+        // Ejecutar la acción DE VERDAD en el celular, si estamos corriendo
+        // dentro del APK nativo (si no, esto no hace nada y la app sigue
+        // funcionando en modo simulado como hasta ahora).
+        if (window.AndroidBridge) {
+          window.AndroidBridge.executeAction(JSON.stringify(intent));
+        }
+
         // Speech Feedback
         if (ttsEnabled && intent.feedbackText) {
           setIsSpeaking(true);
@@ -177,7 +196,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#0a0a0c] text-white flex flex-col font-sans selection:bg-[#00f2ff] selection:text-[#0a0a0c]">
       {/* Immersive Header Navbar */}
-      <header className="bg-[#141418]/90 border-b border-white/10 sticky top-0 z-50 backdrop-blur-md px-6 py-3.5">
+      <header className="bg-[#141418]/90 border-b border-white/10 sticky top-0 z-50 backdrop-blur-md px-6 py-3.5 md:block hidden">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#00f2ff]/20 to-[#0066ff]/20 border border-[#00f2ff]/50 flex items-center justify-center text-[#00f2ff] shadow-[0_0_20px_rgba(0,242,255,0.4)] group">
@@ -242,23 +261,14 @@ export default function App() {
             >
               {ttsEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
-
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('open-pwa-install'))}
-              className="bg-gradient-to-r from-[#00f2ff] to-[#0088ff] hover:brightness-110 text-black font-extrabold text-[11px] uppercase tracking-wider px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-[0_0_15px_rgba(0,242,255,0.4)] active:scale-95 transition"
-              title="Instalar JARVIS como App Nativa"
-            >
-              <Download className="w-3.5 h-3.5 stroke-[3]" />
-              <span className="hidden sm:inline">INSTALAR APP</span>
-            </button>
           </div>
         </div>
       </header>
 
       {/* Main Body View */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-0 md:p-6 flex flex-col justify-center">
         {activeView === 'phone' ? (
-          <div className="flex flex-col items-center py-2">
+          <div className="flex flex-col items-center w-full h-full md:py-2">
             <PhoneFrame
               isListening={isListening}
               isProcessing={isProcessing}
@@ -292,7 +302,7 @@ export default function App() {
       </main>
 
       {/* Immersive Footer */}
-      <footer className="border-t border-white/10 bg-[#0a0a0c] py-3.5 px-6 text-[10px] font-mono text-gray-500">
+      <footer className="border-t border-white/10 bg-[#0a0a0c] py-3.5 px-6 text-[10px] font-mono text-gray-500 md:block hidden">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex gap-4">
             <span>ENCRYPTED_CHANNEL: AES-256</span>
@@ -304,9 +314,6 @@ export default function App() {
           </div>
         </div>
       </footer>
-
-      {/* PWA Floating Native Download Prompt */}
-      <PWAInstallPrompt />
     </div>
   );
 }
