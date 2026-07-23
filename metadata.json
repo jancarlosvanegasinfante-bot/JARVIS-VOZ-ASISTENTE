@@ -1,0 +1,6 @@
+{
+  "name": "Jarvis Voice Assistant",
+  "description": "Asistente de voz personal con reconocedor de intención por IA, servicio de accesibilidad para WhatsApp, ejecutor de acciones nativas y arquitectura en cascada.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
