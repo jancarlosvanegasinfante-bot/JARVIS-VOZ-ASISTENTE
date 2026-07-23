@@ -15,13 +15,15 @@ declare global {
       executeAction: (json: string) => void;
       isAccessibilityEnabled: () => boolean;
       openAccessibilitySettings: () => void;
+      getContacts?: () => string;
+      getInstalledApps?: () => string;
     };
+    updateAndroidContacts?: (contactsJson: string) => void;
+    updateAndroidApps?: (appsJson: string) => void;
   }
 }
 
 export default function App() {
-  const [activeView, setActiveView] = useState<'phone' | 'dashboard'>('phone');
-
   // Voice State
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -30,10 +32,29 @@ export default function App() {
   const [ttsEnabled, setTtsEnabled] = useState(true);
 
   // App Data State
-  const [contacts, setContacts] = useState<Contact[]>(INITIAL_CONTACTS);
+  const [contacts, setContacts] = useState<Contact[]>(() => {
+    const saved = localStorage.getItem('jarvis_contacts');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [installedApps, setInstalledApps] = useState<any[]>(() => [
+    { id: 'a1', name: 'WhatsApp', packageName: 'com.whatsapp' },
+    { id: 'a2', name: 'Teléfono', packageName: 'com.android.dialer' },
+    { id: 'a3', name: 'Spotify', packageName: 'com.spotify.music' },
+    { id: 'a4', name: 'JANBOT Analytics', packageName: 'com.janbot.shop' },
+    { id: 'a5', name: 'Reloj', packageName: 'com.android.deskclock' },
+    { id: 'a6', name: 'SMS', packageName: 'com.android.mms' },
+    { id: 'a7', name: 'Browser', packageName: 'com.android.chrome' },
+    { id: 'a8', name: 'Notas', packageName: 'com.android.notes' },
+  ]);
+  const [isNativeBridgeActive, setIsNativeBridgeActive] = useState(false);
   const [logs, setLogs] = useState<CommandLog[]>([]);
   const [salesData] = useState<SalesData>(INITIAL_SALES_DATA);
   const [accessibilityActive, setAccessibilityActive] = useState(true);
+
+  // Sync contacts to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('jarvis_contacts', JSON.stringify(contacts));
+  }, [contacts]);
 
   // Active Executing Actions
   const [lastIntent, setLastIntent] = useState<IntentResult | null>(null);
@@ -45,6 +66,122 @@ export default function App() {
 
   // SpeechRecognition Web API Ref
   const recognitionRef = useRef<any>(null);
+
+  // Automatic live sync with real Android hardware (retries handle webview race-conditions)
+  useEffect(() => {
+    let attempts = 0;
+    const maxAttempts = 15;
+
+    const trySync = () => {
+      if (window.AndroidBridge) {
+        setIsNativeBridgeActive(true);
+        console.log("⚡ AndroidBridge detectado - Iniciando sincronización de datos de tu celular...");
+
+        // Sync Contacts
+        try {
+          if (typeof window.AndroidBridge.getContacts === 'function') {
+            const contactsStr = window.AndroidBridge.getContacts();
+            if (contactsStr) {
+              const parsed = JSON.parse(contactsStr);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                const mapped = parsed.map((c: any, idx: number) => ({
+                  id: c.id || `contact-${idx}`,
+                  name: c.name || '',
+                  nickname: c.nickname || c.name || '',
+                  phone: c.phone || '',
+                  avatar: c.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(c.name || 'C')}`,
+                  hasWhatsapp: c.hasWhatsapp !== undefined ? c.hasWhatsapp : true,
+                }));
+                setContacts(mapped);
+                console.log("✔ Sincronizados contactos reales desde getContacts():", mapped.length);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Fallo getContacts():", e);
+        }
+
+        // Sync Apps
+        try {
+          if (typeof window.AndroidBridge.getInstalledApps === 'function') {
+            const appsStr = window.AndroidBridge.getInstalledApps();
+            if (appsStr) {
+              const parsed = JSON.parse(appsStr);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                const mapped = parsed.map((a: any, idx: number) => ({
+                  id: a.id || `app-${idx}`,
+                  name: a.name || '',
+                  packageName: a.packageName || '',
+                  iconName: a.iconName || 'Globe',
+                  category: a.category || 'tools',
+                  color: a.color || 'bg-blue-600',
+                }));
+                setInstalledApps(mapped);
+                console.log("✔ Sincronizadas apps reales desde getInstalledApps():", mapped.length);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Fallo getInstalledApps():", e);
+        }
+
+        clearInterval(syncInterval);
+      } else {
+        attempts++;
+        if (attempts >= maxAttempts) {
+          clearInterval(syncInterval);
+        }
+      }
+    };
+
+    const syncInterval = setInterval(trySync, 1000);
+    trySync();
+
+    // Register globally exposed bridge receivers (if Android pushes data directly)
+    (window as any).updateAndroidContacts = (contactsJson: string) => {
+      try {
+        const parsed = JSON.parse(contactsJson);
+        if (Array.isArray(parsed)) {
+          const mapped = parsed.map((c: any, idx: number) => ({
+            id: c.id || `contact-${idx}-${Date.now()}`,
+            name: c.name || '',
+            nickname: c.nickname || c.name || '',
+            phone: c.phone || '',
+            avatar: c.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(c.name || 'C')}`,
+            hasWhatsapp: c.hasWhatsapp !== undefined ? c.hasWhatsapp : true,
+          }));
+          setContacts(mapped);
+          setIsNativeBridgeActive(true);
+          console.log("✔ Sincronización push de contactos completada:", mapped.length);
+        }
+      } catch (err) {
+        console.error("Error en updateAndroidContacts push:", err);
+      }
+    };
+
+    (window as any).updateAndroidApps = (appsJson: string) => {
+      try {
+        const parsed = JSON.parse(appsJson);
+        if (Array.isArray(parsed)) {
+          const mapped = parsed.map((a: any, idx: number) => ({
+            id: a.id || `app-${idx}`,
+            name: a.name || '',
+            packageName: a.packageName || '',
+            iconName: a.iconName || 'Globe',
+            category: a.category || 'tools',
+            color: a.color || 'bg-blue-600',
+          }));
+          setInstalledApps(mapped);
+          setIsNativeBridgeActive(true);
+          console.log("✔ Sincronización push de apps completada:", mapped.length);
+        }
+      } catch (err) {
+        console.error("Error en updateAndroidApps push:", err);
+      }
+    };
+
+    return () => clearInterval(syncInterval);
+  }, []);
 
   useEffect(() => {
     // Initialize Web Speech Recognition if available
@@ -122,7 +259,7 @@ export default function App() {
         body: JSON.stringify({
           transcript: commandText,
           contacts: contacts.map((c) => ({ name: c.name, nickname: c.nickname, phone: c.phone })),
-          installedApps: ['WhatsApp', 'Teléfono', 'Spotify', 'JANBOT Analytics', 'Reloj', 'SMS', 'Browser', 'Notas'],
+          installedApps: installedApps.map((a) => a.name),
         }),
       });
 
@@ -137,8 +274,7 @@ export default function App() {
         audioEngine.playSuccessPing();
 
         // Ejecutar la acción DE VERDAD en el celular, si estamos corriendo
-        // dentro del APK nativo (si no, esto no hace nada y la app sigue
-        // funcionando en modo simulado como hasta ahora).
+        // dentro del APK nativo.
         if (window.AndroidBridge) {
           window.AndroidBridge.executeAction(JSON.stringify(intent));
         }
@@ -149,8 +285,8 @@ export default function App() {
           audioEngine.speak(intent.feedbackText, () => setIsSpeaking(false));
         }
 
-        // WhatsApp Accessibility Service Trigger
-        if (intent.action === 'send_whatsapp' && accessibilityActive) {
+        // WhatsApp Accessibility Service Trigger (solo en simulador / navegador normal)
+        if (intent.action === 'send_whatsapp' && accessibilityActive && !window.AndroidBridge) {
           const matchedContact = contacts.find(
             (c) =>
               c.name.toLowerCase().includes((intent.params.contact || '').toLowerCase()) ||
@@ -196,7 +332,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#0a0a0c] text-white flex flex-col font-sans selection:bg-[#00f2ff] selection:text-[#0a0a0c]">
       {/* Immersive Header Navbar */}
-      <header className="bg-[#141418]/90 border-b border-white/10 sticky top-0 z-50 backdrop-blur-md px-6 py-3.5 md:block hidden">
+      <header className="bg-[#141418]/90 border-b border-white/10 sticky top-0 z-50 backdrop-blur-md px-6 py-3.5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#00f2ff]/20 to-[#0066ff]/20 border border-[#00f2ff]/50 flex items-center justify-center text-[#00f2ff] shadow-[0_0_20px_rgba(0,242,255,0.4)] group">
@@ -205,7 +341,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-lg font-black tracking-tight uppercase italic flex items-center gap-2">
-                JARVIS VOICE <span className="text-[#00f2ff] font-mono font-bold text-xs not-italic bg-[#00f2ff]/10 px-2 py-0.5 rounded border border-[#00f2ff]/30">v1.0.4</span>
+                JARVIS VOICE <span className="text-[#00f2ff] font-mono font-bold text-xs not-italic bg-[#00f2ff]/10 px-2 py-0.5 rounded border border-[#00f2ff]/30">v1.1.0</span>
               </h1>
               <p className="text-[10px] text-gray-400 font-mono tracking-widest uppercase flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -214,41 +350,11 @@ export default function App() {
             </div>
           </div>
 
-          {/* Center View Toggle Buttons */}
-          <div className="flex items-center bg-[#0a0a0c] p-1 rounded-xl border border-white/10">
-            <button
-              onClick={() => setActiveView('phone')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                activeView === 'phone'
-                  ? 'bg-gradient-to-r from-[#00f2ff] to-[#0066ff] text-slate-950 font-bold shadow-[0_0_15px_rgba(0,242,255,0.3)]'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>Simulador Celular</span>
-            </button>
-            <button
-              onClick={() => setActiveView('dashboard')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                activeView === 'dashboard'
-                  ? 'bg-gradient-to-r from-[#00f2ff] to-[#0066ff] text-slate-950 font-bold shadow-[0_0_15px_rgba(0,242,255,0.3)]'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>Panel de Arquitectura</span>
-            </button>
-          </div>
-
           {/* Right Metrics & Controls */}
           <div className="flex items-center gap-6 text-[11px] font-mono text-gray-400">
-            <div className="hidden sm:flex flex-col items-end">
-              <span className="text-[#00f2ff]">98% ENGINE LOAD</span>
-              <span>NVIDIA NIM CASCADE</span>
-            </div>
-            <div className="hidden sm:flex flex-col items-end">
-              <span className="text-orange-400">LATENCY: 42ms</span>
-              <span>OPENROUTER SYNC</span>
+            <div className="hidden md:flex flex-col items-end">
+              <span className="text-[#00f2ff]">ENGINE LOAD ACTIVE</span>
+              <span>ANDROID BRIDGE SYNCED</span>
             </div>
             <button
               onClick={() => setTtsEnabled(!ttsEnabled)}
@@ -266,51 +372,38 @@ export default function App() {
       </header>
 
       {/* Main Body View */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-0 md:p-6 flex flex-col justify-center">
-        {activeView === 'phone' ? (
-          <div className="flex flex-col items-center w-full h-full md:py-2">
-            <PhoneFrame
-              isListening={isListening}
-              isProcessing={isProcessing}
-              isSpeaking={isSpeaking}
-              transcript={transcript}
-              setTranscript={setTranscript}
-              startListening={handleStartListening}
-              stopListening={handleStopListening}
-              onSubmitText={handleProcessCommand}
-              lastIntent={lastIntent}
-              activeWhatsAppFlow={activeWhatsAppFlow}
-              onCloseWhatsAppFlow={() => setActiveWhatsAppFlow(null)}
-              onCloseActionOverlay={() => setLastIntent(null)}
-              accessibilityActive={accessibilityActive}
-              setAccessibilityActive={setAccessibilityActive}
-              salesData={salesData}
-            />
-          </div>
-        ) : (
-          <Dashboard
-            logs={logs}
-            contacts={contacts}
-            onAddContact={handleAddContact}
-            onDeleteContact={handleDeleteContact}
-            accessibilityActive={accessibilityActive}
-            setAccessibilityActive={setAccessibilityActive}
-            lastIntent={lastIntent}
-            onTestCommand={handleProcessCommand}
-          />
-        )}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
+        <Dashboard
+          logs={logs}
+          contacts={contacts}
+          installedApps={installedApps}
+          isNativeBridgeActive={isNativeBridgeActive}
+          onAddContact={handleAddContact}
+          onDeleteContact={handleDeleteContact}
+          accessibilityActive={accessibilityActive}
+          setAccessibilityActive={setAccessibilityActive}
+          lastIntent={lastIntent}
+          onTestCommand={handleProcessCommand}
+          isListening={isListening}
+          isProcessing={isProcessing}
+          isSpeaking={isSpeaking}
+          transcript={transcript}
+          setTranscript={setTranscript}
+          startListening={handleStartListening}
+          stopListening={handleStopListening}
+        />
       </main>
 
       {/* Immersive Footer */}
-      <footer className="border-t border-white/10 bg-[#0a0a0c] py-3.5 px-6 text-[10px] font-mono text-gray-500 md:block hidden">
+      <footer className="border-t border-white/10 bg-[#0a0a0c] py-3.5 px-6 text-[10px] font-mono text-gray-500 hidden md:block">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex gap-4">
-            <span>ENCRYPTED_CHANNEL: AES-256</span>
-            <span>MODEL: NVIDIA-LLAMA-3-70B-INSTRUCT</span>
+            <span>SECURE CHANNEL: SSL/AES-256</span>
+            <span>MODEL: GEMINI-3.5-FLASH-LIVE</span>
           </div>
           <div className="flex gap-4">
-            <span>SESSION_ID: J-7729-ALPHA</span>
-            <span className="text-[#00f2ff]">LAT: 6.2442° N, LONG: 75.5812° W</span>
+            <span>SESSION_ID: JARVIS-SYNC-LIVE</span>
+            <span className="text-[#00f2ff]">MODO REAL ACTIVO</span>
           </div>
         </div>
       </footer>

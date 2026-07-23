@@ -17,6 +17,7 @@ import {
   Sparkles,
   Navigation,
   Headphones,
+  X,
 } from 'lucide-react';
 import { Contact, AppItem, SystemNotification, IntentResult, SalesData } from '../types';
 import { FloatingChatHead } from './FloatingChatHead';
@@ -41,6 +42,7 @@ interface PhoneFrameProps {
   accessibilityActive: boolean;
   setAccessibilityActive: (val: boolean) => void;
   salesData: SalesData;
+  isNativeBridgeActive?: boolean;
 }
 
 export const PhoneFrame: React.FC<PhoneFrameProps> = ({
@@ -59,6 +61,7 @@ export const PhoneFrame: React.FC<PhoneFrameProps> = ({
   accessibilityActive,
   setAccessibilityActive,
   salesData,
+  isNativeBridgeActive,
 }) => {
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [isMotoModeOpen, setIsMotoModeOpen] = useState(false);
@@ -125,8 +128,10 @@ export const PhoneFrame: React.FC<PhoneFrameProps> = ({
         <div className="bg-[#141418] border border-white/10 rounded-2xl p-3 shadow-lg z-20">
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-[#00f2ff] animate-ping" />
-              <span className="text-xs font-bold text-white tracking-wider uppercase italic">Jan Jarvis Core</span>
+              <div className={`w-2 h-2 rounded-full ${isNativeBridgeActive ? 'bg-green-400' : 'bg-[#00f2ff]'} animate-ping`} />
+              <span className="text-xs font-bold text-white tracking-wider uppercase italic">
+                {isNativeBridgeActive ? '📲 CELULAR EN VIVO' : 'Jan Jarvis Core'}
+              </span>
             </div>
             <button
               onClick={() => setAccessibilityActive(!accessibilityActive)}
@@ -221,8 +226,31 @@ export const PhoneFrame: React.FC<PhoneFrameProps> = ({
           accessibilityActive={accessibilityActive}
         />
 
+        {/* HUD notification for live Android execution feedback */}
+        {isNativeBridgeActive && lastIntent && (
+          <div className="absolute top-4 inset-x-4 bg-[#141418]/95 border-2 border-green-500/50 text-white rounded-2xl p-3 shadow-[0_0_25px_rgba(34,197,94,0.3)] z-50 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="flex items-start gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center text-green-400 shrink-0">
+                <ShieldCheck className="w-4 h-4 text-green-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-green-400 font-mono">Dispositivo Real</h4>
+                  <button onClick={onCloseActionOverlay} className="text-gray-400 hover:text-white">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <p className="text-[11px] font-semibold text-gray-100 mt-0.5 leading-snug">{lastIntent.feedbackText}</p>
+                <div className="text-[9px] font-mono text-gray-400 mt-1 uppercase">
+                  Acción: {lastIntent.action} • ENVIADA CON ÉXITO
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* WhatsApp Accessibility Overlay (When WhatsApp action triggers) */}
-        {activeWhatsAppFlow && (
+        {activeWhatsAppFlow && !isNativeBridgeActive && (
           <WhatsAppAccessibilityOverlay
             contactName={activeWhatsAppFlow.contactName}
             phoneNumber={activeWhatsAppFlow.phoneNumber}
@@ -233,7 +261,7 @@ export const PhoneFrame: React.FC<PhoneFrameProps> = ({
         )}
 
         {/* Generic Action Execution Overlay (When other voice actions trigger) */}
-        {lastIntent && !activeWhatsAppFlow && lastIntent.action !== 'send_whatsapp' && (
+        {lastIntent && !activeWhatsAppFlow && lastIntent.action !== 'send_whatsapp' && !isNativeBridgeActive && (
           <ActionOverlay intent={lastIntent} onClose={onCloseActionOverlay} salesData={salesData} />
         )}
 
