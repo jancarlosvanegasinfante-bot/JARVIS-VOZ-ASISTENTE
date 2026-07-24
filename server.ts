@@ -143,51 +143,203 @@ Devuelve un objeto JSON estricto con la siguiente estructura:
       }
     }
 
-    // Fallback deterministic rule-based parsing engine
+    // Fallback deterministic rule-based parsing engine (Super Smart Extraction)
     const textLower = transcript.toLowerCase();
     let action = 'search_web';
     let params: Record<string, string> = {};
     let feedbackText = 'Buscando información en la web...';
     let explanation = 'Búsqueda web por defecto';
 
-    if (textLower.includes('whatsapp') || textLower.includes('mensaje a') || textLower.includes('escríbele a') || textLower.includes('escribe a')) {
-      action = 'send_whatsapp';
-      let contact = 'Juan';
-      if (textLower.includes('maría') || textLower.includes('maria')) contact = 'María';
-      if (textLower.includes('mamá') || textLower.includes('mama')) contact = 'Mamá';
-      if (textLower.includes('carlos')) contact = 'Carlos';
-      
-      let message = 'Hola, ¿cómo estás?';
-      const queIndex = textLower.indexOf('que ');
-      if (queIndex !== -1) {
-        message = transcript.substring(queIndex + 4);
-      } else if (textLower.includes('dile')) {
-        const dileIndex = textLower.indexOf('dile');
-        message = transcript.substring(dileIndex + 5);
+    // Helper: Dynamic Alarm details extraction
+    const extractAlarmDetails = (text: string) => {
+      const textL = text.toLowerCase();
+      let time = '07:00';
+      let date = 'Mañana';
+
+      if (textL.includes('hoy')) {
+        date = 'Hoy';
+      } else if (textL.includes('mañana') || textL.includes('manana')) {
+        date = 'Mañana';
       }
 
-      params = { contact, message };
-      feedbackText = `Listo, abriendo WhatsApp para enviarle a ${contact}: "${message}"`;
-      explanation = `Reconocido comando de envío de WhatsApp hacia ${contact}`;
+      const wordToNum: Record<string, number> = {
+        'una': 1, 'un': 1, 'uno': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5,
+        'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9, 'diez': 10, 'once': 11, 'doce': 12,
+        'mediodía': 12, 'mediodia': 12, 'medianoche': 0
+      };
+
+      const timeRegex = /(\d{1,2})[:h](\d{2})?\s*(am|pm|a\.m\.|p\.m\.)?/i;
+      const match = textL.match(timeRegex);
+
+      let hour = -1;
+      let minute = 0;
+      let isPm = false;
+      let timeFound = false;
+
+      if (match) {
+        hour = parseInt(match[1], 10);
+        if (match[2]) {
+          minute = parseInt(match[2], 10);
+        }
+        if (match[3]) {
+          const p = match[3].toLowerCase();
+          if (p.includes('p')) isPm = true;
+        }
+        timeFound = true;
+      } else {
+        for (const [word, val] of Object.entries(wordToNum)) {
+          const regex = new RegExp(`\\b${word}\\b`);
+          if (regex.test(textL)) {
+            hour = val;
+            timeFound = true;
+            break;
+          }
+        }
+
+        if (!timeFound) {
+          const numberMatch = textL.match(/\b(1[0-2]|[1-9]|2[0-3]|0)\b/);
+          if (numberMatch) {
+            hour = parseInt(numberMatch[1], 10);
+            timeFound = true;
+          }
+        }
+
+        if (textL.includes('y media')) {
+          minute = 30;
+        } else if (textL.includes('y cuarto') || textL.includes('y quince')) {
+          minute = 15;
+        } else if (textL.includes('y cuarenta y cinco')) {
+          minute = 45;
+        }
+      }
+
+      if (textL.includes('tarde') || textL.includes('noche') || textL.includes('pm') || textL.includes('p.m.')) {
+        isPm = true;
+      }
+
+      if (timeFound && hour !== -1) {
+        if (isPm && hour < 12) {
+          hour += 12;
+        } else if (!isPm && hour === 12) {
+          hour = 0;
+        }
+        
+        const hStr = hour.toString().padStart(2, '0');
+        const mStr = minute.toString().padStart(2, '0');
+        time = `${hStr}:${mStr}`;
+      }
+
+      const displayHour = hour === -1 ? 7 : (hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour));
+      const displayMinute = minute.toString().padStart(2, '0');
+      const period = hour >= 12 ? 'PM' : 'AM';
+      const customFeedback = `Configurada la alarma y recordatorio para las ${displayHour}:${displayMinute} ${period} (${date.toLowerCase()}).`;
+
+      return { time, date, title: 'Alarma de Jarvis', feedbackText: customFeedback };
+    };
+
+    // Helper: Dynamic Contact & Message extraction
+    const extractContactAndMessage = (text: string, contactsList: any[]) => {
+      const textL = text.toLowerCase();
+      let contactName = 'Juan';
+      let messageText = 'Hola, ¿cómo estás?';
+
+      let bestMatch = null;
+      let bestLen = 0;
+      for (const c of contactsList) {
+        const nameLower = c.name ? c.name.toLowerCase() : '';
+        const nickLower = c.nickname ? c.nickname.toLowerCase() : '';
+        if (nameLower && textL.includes(nameLower) && nameLower.length > bestLen) {
+          bestMatch = c;
+          bestLen = nameLower.length;
+        }
+        if (nickLower && textL.includes(nickLower) && nickLower.length > bestLen) {
+          bestMatch = c;
+          bestLen = nickLower.length;
+        }
+      }
+
+      if (bestMatch) {
+        contactName = bestMatch.nickname || bestMatch.name;
+      } else {
+        if (textL.includes('maría') || textL.includes('maria')) contactName = 'María';
+        else if (textL.includes('mamá') || textL.includes('mama')) contactName = 'Mamá';
+        else if (textL.includes('carlos')) contactName = 'Carlos';
+      }
+
+      const queIndex = textL.indexOf('que ');
+      if (queIndex !== -1) {
+        messageText = text.substring(queIndex + 4);
+      } else {
+        const dileIndex = textL.indexOf('dile ');
+        if (dileIndex !== -1) {
+          messageText = text.substring(dileIndex + 5);
+        } else {
+          const diciendoIndex = textL.indexOf('diciendo ');
+          if (diciendoIndex !== -1) {
+            messageText = text.substring(diciendoIndex + 9);
+          }
+        }
+      }
+
+      messageText = messageText.replace(/(por favor|porfa|gracias)\s*$/i, '').trim();
+      if (messageText) {
+        messageText = messageText.charAt(0).toUpperCase() + messageText.slice(1);
+      }
+
+      return { contact: contactName, message: messageText };
+    };
+
+    // Helper: Dynamic App Name matching
+    const extractAppName = (text: string, appsList: any[]) => {
+      const textL = text.toLowerCase();
+      let matchedApp = 'WhatsApp';
+
+      let bestMatch = null;
+      let bestLen = 0;
+      for (const app of appsList) {
+        const appNameLower = app.toLowerCase();
+        if (textL.includes(appNameLower) && appNameLower.length > bestLen) {
+          bestMatch = app;
+          bestLen = appNameLower.length;
+        }
+      }
+
+      if (bestMatch) {
+        matchedApp = bestMatch;
+      } else {
+        if (textL.includes('spotify')) matchedApp = 'Spotify';
+        else if (textL.includes('reloj') || textL.includes('alarma') || textL.includes('clock') || textL.includes('alarmas')) matchedApp = 'Reloj';
+        else if (textL.includes('whatsapp')) matchedApp = 'WhatsApp';
+        else if (textL.includes('navegador') || textL.includes('chrome') || textL.includes('google')) matchedApp = 'Navegador Web';
+      }
+
+      return matchedApp;
+    };
+
+    // Cascade intent matching routing
+    if (textLower.includes('whatsapp') || textLower.includes('mensaje a') || textLower.includes('escríbele a') || textLower.includes('escribe a')) {
+      action = 'send_whatsapp';
+      const extracted = extractContactAndMessage(transcript, contacts);
+      params = { contact: extracted.contact, message: extracted.message };
+      feedbackText = `Listo, abriendo WhatsApp para enviarle a ${extracted.contact}: "${extracted.message}"`;
+      explanation = `Reconocido comando de envío de WhatsApp hacia ${extracted.contact}`;
     } else if (textLower.includes('llama') || textLower.includes('llamar') || textLower.includes('marcar')) {
       action = 'make_call';
-      let contact = 'Mamá';
-      if (textLower.includes('juan')) contact = 'Juan Carlos';
-      if (textLower.includes('maría') || textLower.includes('maria')) contact = 'María';
-      if (textLower.includes('carlos')) contact = 'Carlos';
-      params = { contact };
-      feedbackText = `Iniciando llamada telefónica a ${contact}...`;
-      explanation = `Comando de llamada hacia ${contact}`;
+      const extracted = extractContactAndMessage(transcript, contacts);
+      params = { contact: extracted.contact };
+      feedbackText = `Iniciando llamada telefónica a ${extracted.contact}...`;
+      explanation = `Comando de llamada hacia ${extracted.contact}`;
     } else if (textLower.includes('venta') || textLower.includes('ventas') || textLower.includes('jansel') || textLower.includes('janbot')) {
       action = 'janbot_query';
       params = { queryType: 'sales', dateRange: 'hoy' };
       feedbackText = 'Consultando las ventas de hoy en Jansel Shop...';
       explanation = 'Consulta de métricas comerciales de negocio JanBot';
-    } else if (textLower.includes('alarma') || textLower.includes('recordatorio') || textLower.includes('recuérdame') || textLower.includes('recuerdame')) {
+    } else if (textLower.includes('alarma') || textLower.includes('recordatorio') || textLower.includes('recuérdame') || textLower.includes('recuerdame') || textLower.includes('despiértame') || textLower.includes('despiertame')) {
       action = 'set_reminder';
-      params = { title: 'Recordatorio personal', time: '7:00 AM', date: 'Mañana' };
-      feedbackText = 'Configurada la alarma y recordatorio para las 7:00 AM.';
-      explanation = 'Creación de alarma en el sistema';
+      const extracted = extractAlarmDetails(transcript);
+      params = { title: extracted.title, time: extracted.time, date: extracted.date };
+      feedbackText = extracted.feedbackText;
+      explanation = `Creación de alarma para las ${extracted.time} de tipo ${extracted.date}`;
     } else if (textLower.includes('música') || textLower.includes('musica') || textLower.includes('spotify') || textLower.includes('reproducir')) {
       action = 'control_music';
       params = { command: 'play', track: 'Música relajante' };
@@ -205,9 +357,7 @@ Devuelve un objeto JSON estricto con la siguiente estructura:
       explanation = 'Dictado de nota rápida';
     } else if (textLower.includes('abrir') || textLower.includes('abre')) {
       action = 'open_app';
-      let appName = 'WhatsApp';
-      if (textLower.includes('spotify')) appName = 'Spotify';
-      if (textLower.includes('navegador') || textLower.includes('chrome')) appName = 'Navegador Web';
+      const appName = extractAppName(transcript, installedApps);
       params = { appName };
       feedbackText = `Abriendo la aplicación ${appName}...`;
       explanation = `Apertura de aplicación ${appName}`;
@@ -228,7 +378,7 @@ Devuelve un objeto JSON estricto con la siguiente estructura:
         feedbackText,
       },
       latencyMs: Math.max(duration, 120),
-      providerUsed: 'NVIDIA NIM + OpenRouter (Simulación de Cascada en Local)',
+      providerUsed: 'Cascading Rule Engine (Procesamiento Inteligente Local)',
     });
   });
 
