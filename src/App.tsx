@@ -33,8 +33,18 @@ export default function App() {
 
   // App Data State
   const [contacts, setContacts] = useState<Contact[]>(() => {
-    const saved = localStorage.getItem('jarvis_contacts');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('jarvis_contacts') : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn("localStorage is not available inside the Android WebView:", e);
+    }
+    return INITIAL_CONTACTS;
   });
   const [installedApps, setInstalledApps] = useState<any[]>(() => [
     { id: 'a1', name: 'WhatsApp', packageName: 'com.whatsapp' },
@@ -53,7 +63,13 @@ export default function App() {
 
   // Sync contacts to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('jarvis_contacts', JSON.stringify(contacts));
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('jarvis_contacts', JSON.stringify(contacts));
+      }
+    } catch (e) {
+      console.warn("Could not write to localStorage inside WebView:", e);
+    }
   }, [contacts]);
 
   // Active Executing Actions
