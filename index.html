@@ -22,6 +22,43 @@
   </head>
   <body>
     <div id="root"></div>
+    <div id="error-fallback" style="display:none; padding:32px 16px; background:#0a0a0f; color:#ffffff; font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; text-align:center; min-h:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box;">
+      <div style="background:#141418; border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:24px; max-width:400px; width:100%; box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+        <div style="width:56px; height:56px; background:rgba(255, 59, 48, 0.1); border:1px solid rgba(255, 59, 48, 0.3); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px auto;">
+          <span style="color:#ff3b30; font-size:28px; font-weight:bold;">!</span>
+        </div>
+        <h2 style="margin:0 0 8px 0; font-size:18px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">Error de Ejecución</h2>
+        <p style="margin:0 0 16px 0; font-size:13px; color:#a0a0ab; line-height:1.5;">El asistente detectó un inconveniente con el motor de voz o el navegador de tu celular.</p>
+        <div style="background:#0a0a0f; border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:12px; margin-bottom:20px; text-align:left;">
+          <code id="error-message" style="font-family:monospace; font-size:11px; color:#ff3b30; word-break:break-all; display:block; max-height:100px; overflow-y:auto;">Ningún detalle disponible</code>
+        </div>
+        <button onclick="window.location.reload(true)" style="background:#00f2ff; color:#0a0a0f; border:none; padding:12px 24px; border-radius:10px; font-size:13px; font-weight:bold; width:100%; cursor:pointer; box-shadow:0 0 15px rgba(0,242,255,0.3); transition:transform 0.1s ease;">Reintentar Carga</button>
+      </div>
+    </div>
+    <script>
+      // Global diagnostic error boundary
+      window.addEventListener('error', function(e) {
+        var root = document.getElementById('root');
+        var fallback = document.getElementById('error-fallback');
+        var msg = document.getElementById('error-message');
+        if (fallback && msg) {
+          msg.textContent = e.message + "\nEn: " + (e.filename || 'script-desconocido') + ":" + (e.lineno || 0);
+          fallback.style.display = 'flex';
+          if (root) root.style.display = 'none';
+        }
+      });
+      // Handle unhandled promise rejections as well
+      window.addEventListener('unhandledrejection', function(e) {
+        var root = document.getElementById('root');
+        var fallback = document.getElementById('error-fallback');
+        var msg = document.getElementById('error-message');
+        if (fallback && msg) {
+          msg.textContent = "Promesa Rechazada: " + (e.reason ? (e.reason.message || e.reason) : 'Error Desconocido');
+          fallback.style.display = 'flex';
+          if (root) root.style.display = 'none';
+        }
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
     <script>
       if ('serviceWorker' in navigator) {

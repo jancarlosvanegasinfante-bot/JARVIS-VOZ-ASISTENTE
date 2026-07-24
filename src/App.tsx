@@ -89,64 +89,68 @@ export default function App() {
     const maxAttempts = 15;
 
     const trySync = () => {
-      if (window.AndroidBridge) {
-        setIsNativeBridgeActive(true);
-        console.log("⚡ AndroidBridge detectado - Iniciando sincronización de datos de tu celular...");
+      try {
+        if (typeof window !== 'undefined' && window.AndroidBridge) {
+          setIsNativeBridgeActive(true);
+          console.log("⚡ AndroidBridge detectado - Iniciando sincronización de datos de tu celular...");
 
-        // Sync Contacts
-        try {
-          if (typeof window.AndroidBridge.getContacts === 'function') {
-            const contactsStr = window.AndroidBridge.getContacts();
-            if (contactsStr) {
-              const parsed = JSON.parse(contactsStr);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                const mapped = parsed.map((c: any, idx: number) => ({
-                  id: c.id || `contact-${idx}`,
-                  name: c.name || '',
-                  nickname: c.nickname || c.name || '',
-                  phone: c.phone || '',
-                  avatar: c.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(c.name || 'C')}`,
-                  hasWhatsapp: c.hasWhatsapp !== undefined ? c.hasWhatsapp : true,
-                }));
-                setContacts(mapped);
-                console.log("✔ Sincronizados contactos reales desde getContacts():", mapped.length);
+          // Sync Contacts
+          try {
+            if (typeof window.AndroidBridge.getContacts === 'function') {
+              const contactsStr = window.AndroidBridge.getContacts();
+              if (contactsStr) {
+                const parsed = JSON.parse(contactsStr);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  const mapped = parsed.map((c: any, idx: number) => ({
+                    id: c.id || `contact-${idx}`,
+                    name: c.name || '',
+                    nickname: c.nickname || c.name || '',
+                    phone: c.phone || '',
+                    avatar: c.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(c.name || 'C')}`,
+                    hasWhatsapp: c.hasWhatsapp !== undefined ? c.hasWhatsapp : true,
+                  }));
+                  setContacts(mapped);
+                  console.log("✔ Sincronizados contactos reales desde getContacts():", mapped.length);
+                }
               }
             }
+          } catch (e) {
+            console.warn("Fallo getContacts():", e);
           }
-        } catch (e) {
-          console.warn("Fallo getContacts():", e);
-        }
 
-        // Sync Apps
-        try {
-          if (typeof window.AndroidBridge.getInstalledApps === 'function') {
-            const appsStr = window.AndroidBridge.getInstalledApps();
-            if (appsStr) {
-              const parsed = JSON.parse(appsStr);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                const mapped = parsed.map((a: any, idx: number) => ({
-                  id: a.id || `app-${idx}`,
-                  name: a.name || '',
-                  packageName: a.packageName || '',
-                  iconName: a.iconName || 'Globe',
-                  category: a.category || 'tools',
-                  color: a.color || 'bg-blue-600',
-                }));
-                setInstalledApps(mapped);
-                console.log("✔ Sincronizadas apps reales desde getInstalledApps():", mapped.length);
+          // Sync Apps
+          try {
+            if (typeof window.AndroidBridge.getInstalledApps === 'function') {
+              const appsStr = window.AndroidBridge.getInstalledApps();
+              if (appsStr) {
+                const parsed = JSON.parse(appsStr);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  const mapped = parsed.map((a: any, idx: number) => ({
+                    id: a.id || `app-${idx}`,
+                    name: a.name || '',
+                    packageName: a.packageName || '',
+                    iconName: a.iconName || 'Globe',
+                    category: a.category || 'tools',
+                    color: a.color || 'bg-blue-600',
+                  }));
+                  setInstalledApps(mapped);
+                  console.log("✔ Sincronizadas apps reales desde getInstalledApps():", mapped.length);
+                }
               }
             }
+          } catch (e) {
+            console.warn("Fallo getInstalledApps():", e);
           }
-        } catch (e) {
-          console.warn("Fallo getInstalledApps():", e);
-        }
 
-        clearInterval(syncInterval);
-      } else {
-        attempts++;
-        if (attempts >= maxAttempts) {
           clearInterval(syncInterval);
+        } else {
+          attempts++;
+          if (attempts >= maxAttempts) {
+            clearInterval(syncInterval);
+          }
         }
+      } catch (err) {
+        console.error("Error en trySync general:", err);
       }
     };
 
@@ -200,39 +204,49 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // Initialize Web Speech Recognition if available
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    try {
+      // Initialize Web Speech Recognition if available with safety guards
+      const SpeechRecognition =
+        typeof window !== 'undefined'
+          ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+          : null;
 
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.lang = 'es-CO';
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = 'es-CO';
 
-      recognition.onstart = () => {
-        setIsListening(true);
-        audioEngine.playWakeChime();
-      };
+        recognition.onstart = () => {
+          setIsListening(true);
+          try {
+            audioEngine.playWakeChime();
+          } catch (e) {
+            console.warn('Audio Chime issue:', e);
+          }
+        };
 
-      recognition.onresult = (event: any) => {
-        let currentTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          currentTranscript += event.results[i][0].transcript;
-        }
-        setTranscript(currentTranscript);
-      };
+        recognition.onresult = (event: any) => {
+          let currentTranscript = '';
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            currentTranscript += event.results[i][0].transcript;
+          }
+          setTranscript(currentTranscript);
+        };
 
-      recognition.onerror = (event: any) => {
-        console.warn('Speech recognition error:', event.error);
-        setIsListening(false);
-      };
+        recognition.onerror = (event: any) => {
+          console.warn('Speech recognition error:', event.error);
+          setIsListening(false);
+        };
 
-      recognition.onend = () => {
-        setIsListening(false);
-      };
+        recognition.onend = () => {
+          setIsListening(false);
+        };
 
-      recognitionRef.current = recognition;
+        recognitionRef.current = recognition;
+      }
+    } catch (err) {
+      console.warn('No se pudo inicializar SpeechRecognition (no soportado o denegado por WebView):', err);
     }
   }, []);
 
