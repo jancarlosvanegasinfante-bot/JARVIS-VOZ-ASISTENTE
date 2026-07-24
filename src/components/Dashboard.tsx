@@ -16,6 +16,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { CommandLog, Contact, IntentResult } from '../types';
+import { audioEngine } from '../utils/audioSynth';
 
 interface DashboardProps {
   logs: CommandLog[];
@@ -107,6 +108,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto shrink-0">
+          <button
+            onClick={() => {
+              audioEngine.playSuccessPing();
+              audioEngine.speak("Hola, soy Jarvis, tu asistente de voz. Estoy totalmente activo y puedo hablar con voz clara en tu celular.");
+            }}
+            className="px-4 py-2.5 rounded-xl text-xs font-mono font-bold bg-[#00f2ff] text-[#0a0a0f] hover:bg-[#80f9ff] transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(0,242,255,0.4)] cursor-pointer"
+          >
+            <Volume2 className="w-4 h-4" />
+            <span>🔊 PROBAR VOZ DE JARVIS</span>
+          </button>
+
           <div className={`px-4 py-2.5 rounded-xl text-xs font-mono font-bold flex items-center justify-center gap-2 border ${
             isNativeBridgeActive 
               ? 'bg-green-500/10 border-green-500/30 text-green-400' 

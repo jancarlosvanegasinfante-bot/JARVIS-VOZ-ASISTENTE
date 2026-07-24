@@ -278,6 +278,54 @@ export default function App() {
     }
   };
 
+  const executeRealBrowserAction = (intent: IntentResult) => {
+    try {
+      const action = intent.action;
+      const params = intent.params || {};
+
+      if (action === 'send_whatsapp') {
+        const contactQuery = (params.contact || '').toLowerCase();
+        const matched = contacts.find(
+          (c) => c.name.toLowerCase().includes(contactQuery) || (c.nickname && c.nickname.toLowerCase().includes(contactQuery))
+        ) || contacts[0];
+
+        const phone = (matched?.phone || '573000000000').replace(/\D/g, '');
+        const msg = encodeURIComponent(params.message || 'Hola desde Jarvis');
+        window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${msg}`, '_blank');
+      } else if (action === 'make_call') {
+        const contactQuery = (params.contact || '').toLowerCase();
+        const matched = contacts.find(
+          (c) => c.name.toLowerCase().includes(contactQuery) || (c.nickname && c.nickname.toLowerCase().includes(contactQuery))
+        ) || contacts[0];
+
+        const phone = (matched?.phone || '1234567890').replace(/\D/g, '');
+        window.location.href = `tel:${phone}`;
+      } else if (action === 'open_app' || action === 'control_music') {
+        const appName = (params.appName || params.command || '').toLowerCase();
+        if (appName.includes('spotify') || action === 'control_music') {
+          window.open('https://open.spotify.com', '_blank');
+        } else if (appName.includes('reloj') || appName.includes('clock') || appName.includes('alarma')) {
+          window.location.href = 'intent://com.android.deskclock/#Intent;scheme=android-app;end';
+        } else if (appName.includes('whatsapp')) {
+          window.open('https://api.whatsapp.com/send?phone=', '_blank');
+        } else {
+          window.open('https://www.google.com', '_blank');
+        }
+      } else if (action === 'set_reminder') {
+        const title = encodeURIComponent(params.title || 'Alarma Jarvis');
+        const timeParts = (params.time || '07:00').split(':');
+        const hour = parseInt(timeParts[0] || '7', 10);
+        const minute = parseInt(timeParts[1] || '0', 10);
+        window.location.href = `intent://#Intent;action=android.intent.action.SET_ALARM;S.android.intent.extra.MESSAGE=${title};i.android.intent.extra.HOUR=${hour};i.android.intent.extra.MINUTES=${minute};end`;
+      } else if (action === 'search_web') {
+        const q = encodeURIComponent(params.query || intent.feedbackText || 'Jarvis Voice');
+        window.open(`https://www.google.com/search?q=${q}`, '_blank');
+      }
+    } catch (e) {
+      console.warn("Real browser action dispatch error:", e);
+    }
+  };
+
   const handleProcessCommand = async (commandText: string) => {
     setIsListening(false);
     setIsProcessing(true);
@@ -303,19 +351,20 @@ export default function App() {
         // Sound Feedback
         audioEngine.playSuccessPing();
 
-        // Ejecutar la acción DE VERDAD en el celular, si estamos corriendo
-        // dentro del APK nativo.
-        if (window.AndroidBridge) {
-          window.AndroidBridge.executeAction(JSON.stringify(intent));
-        }
-
         // Speech Feedback
         if (ttsEnabled && intent.feedbackText) {
           setIsSpeaking(true);
           audioEngine.speak(intent.feedbackText, () => setIsSpeaking(false));
         }
 
-        // WhatsApp Accessibility Service Trigger (solo en simulador / navegador normal)
+        // Ejecutar acción DE VERDAD en el celular (vía Bridge o Deep Link directo)
+        if (typeof window !== 'undefined' && window.AndroidBridge) {
+          window.AndroidBridge.executeAction(JSON.stringify(intent));
+        } else {
+          executeRealBrowserAction(intent);
+        }
+
+        // WhatsApp Accessibility Service Trigger (solo en simulador visual)
         if (intent.action === 'send_whatsapp' && accessibilityActive && !window.AndroidBridge) {
           const matchedContact = contacts.find(
             (c) =>

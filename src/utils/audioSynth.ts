@@ -76,33 +76,91 @@ class AudioEngine {
   }
 
   speak(text: string, onEnd?: () => void) {
-    if (!('speechSynthesis' in window)) {
+    if (!text) {
       if (onEnd) onEnd();
       return;
     }
 
-    window.speechSynthesis.cancel(); // Cancel ongoing speech
+    try {
+      // 1. Direct AndroidBridge native TTS support if present
+      if (typeof window !== 'undefined' && (window as any).AndroidBridge && typeof (window as any).AndroidBridge.speak === 'function') {
+        (window as any).AndroidBridge.speak(text);
+        if (onEnd) setTimeout(onEnd, 2000);
+        return;
+      }
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'es-CO'; // Colombian Spanish preference
-    utterance.rate = 1.05;
-    utterance.pitch = 1.0;
+      // 2. Web Speech API with fallback
+      if (!('speechSynthesis' in window)) {
+        this.fallbackAudioSpeak(text, onEnd);
+        return;
+      }
 
-    // Try to find Spanish voice
-    const voices = window.speechSynthesis.getVoices();
-    const esVoice = voices.find(
-      (v) => v.lang.startsWith('es') || v.name.toLowerCase().includes('spanish') || v.name.toLowerCase().includes('monica') || v.name.toLowerCase().includes('diego')
-    );
-    if (esVoice) {
-      utterance.voice = esVoice;
+      window.speechSynthesis.cancel();
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'es-CO';
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      let spoke = false;
+
+      const doSpeak = () => {
+        if (spoke) return;
+        spoke = true;
+
+        const voices = window.speechSynthesis.getVoices();
+        const esVoice = voices.find(
+          (v) => v.lang.startsWith('es') || v.name.toLowerCase().includes('spanish') || v.name.toLowerCase().includes('monica') || v.name.toLowerCase().includes('diego') || v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('sabina') || v.name.toLowerCase().includes('jorge')
+        );
+        if (esVoice) {
+          utterance.voice = esVoice;
+        }
+
+        utterance.onend = () => {
+          if (onEnd) onEnd();
+        };
+
+        utterance.onerror = (err) => {
+          console.warn("SpeechSynthesis error, falling back to Audio TTS:", err);
+          this.fallbackAudioSpeak(text, onEnd);
+        };
+
+        window.speechSynthesis.speak(utterance);
+      };
+
+      const voices = window.speechSynthesis.getVoices();
+      if (!voices || voices.length === 0) {
+        window.speechSynthesis.onvoiceschanged = () => {
+          doSpeak();
+          window.speechSynthesis.onvoiceschanged = null;
+        };
+        setTimeout(doSpeak, 150);
+      } else {
+        doSpeak();
+      }
+    } catch (e) {
+      console.warn("Error initiating TTS:", e);
+      this.fallbackAudioSpeak(text, onEnd);
     }
+  }
 
-    if (onEnd) {
-      utterance.onend = onEnd;
-      utterance.onerror = onEnd;
+  private fallbackAudioSpeak(text: string, onEnd?: () => void) {
+    try {
+      const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=es&client=tw-ob`;
+      const audio = new Audio(url);
+      audio.onended = () => { if (onEnd) onEnd(); };
+      audio.onerror = () => { if (onEnd) onEnd(); };
+      audio.play().catch((err) => {
+        console.warn("Fallback audio play failed:", err);
+        if (onEnd) onEnd();
+      });
+    } catch {
+      if (onEnd) onEnd();
     }
-
-    window.speechSynthesis.speak(utterance);
   }
 
   stopSpeech() {
