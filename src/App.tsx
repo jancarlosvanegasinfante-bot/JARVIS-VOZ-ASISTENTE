@@ -253,6 +253,15 @@ export default function App() {
   const handleStartListening = () => {
     setTranscript('');
     audioEngine.playWakeChime();
+
+    // 1. Prioridad: micrófono NATIVO de Android (funciona dentro del APK,
+    // donde el Web Speech API del navegador no existe)
+    if (typeof window !== 'undefined' && window.AndroidBridge && typeof (window.AndroidBridge as any).startListening === 'function') {
+      (window.AndroidBridge as any).startListening();
+      return;
+    }
+
+    // 2. Fallback: Web Speech API del navegador (para cuando pruebas en Chrome/AI Studio)
     if (recognitionRef.current) {
       try {
         recognitionRef.current.start();
@@ -265,6 +274,14 @@ export default function App() {
   };
 
   const handleStopListening = () => {
+    // Si estamos usando el micrófono nativo, el propio Android nos avisa
+    // cuándo terminó (window.onNativeListeningState) y nos manda el texto
+    // final (window.onNativeTranscript), así que aquí solo le pedimos que pare.
+    if (typeof window !== 'undefined' && window.AndroidBridge && typeof (window.AndroidBridge as any).stopListening === 'function') {
+      (window.AndroidBridge as any).stopListening();
+      return;
+    }
+
     setIsListening(false);
     if (recognitionRef.current) {
       try {
@@ -277,6 +294,27 @@ export default function App() {
       handleProcessCommand(transcript.trim());
     }
   };
+
+  // Receptores de los resultados que manda el micrófono NATIVO de Android
+  // (ver MainActivity.kt -> startNativeListening). Solo se usan dentro del APK.
+  useEffect(() => {
+    (window as any).onNativeListeningState = (listening: boolean) => {
+      setIsListening(listening);
+    };
+
+    (window as any).onNativeTranscript = (text: string, isFinal: boolean) => {
+      setTranscript(text);
+      if (isFinal && text.trim()) {
+        handleProcessCommand(text.trim());
+      }
+    };
+
+    return () => {
+      delete (window as any).onNativeListeningState;
+      delete (window as any).onNativeTranscript;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const executeRealBrowserAction = (intent: IntentResult) => {
     try {
