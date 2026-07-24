@@ -17,6 +17,11 @@ declare global {
       openAccessibilitySettings: () => void;
       getContacts?: () => string;
       getInstalledApps?: () => string;
+      getLatestNotification?: () => string;
+      answerPhoneCall?: () => boolean;
+      speak?: (text: string) => void;
+      startListening?: () => void;
+      stopListening?: () => void;
     };
     updateAndroidContacts?: (contactsJson: string) => void;
     updateAndroidApps?: (appsJson: string) => void;
