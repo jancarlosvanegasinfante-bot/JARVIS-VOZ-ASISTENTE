@@ -8,7 +8,8 @@ export type ActionType =
   | 'read_notifications'
   | 'dictate_note'
   | 'control_music'
-  | 'janbot_query';
+  | 'janbot_query'
+  | 'general_query';
 
 export interface ActionParams {
   contact?: string;

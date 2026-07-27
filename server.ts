@@ -60,6 +60,8 @@ Acciones permitidas y sus parámetros:
 12. "close_app": Cerrar la aplicación actual o volver a la pantalla de inicio. params: {}
 13. "search_web": Buscar información en Google / Web. params: { "query": string }
 14. "control_music": Controlar reproducción multimedia. params: { "command": "play"|"pause"|"next"|"prev"|"volume_up"|"volume_down", "track": string }
+15. "general_query": Úsala para CUALQUIER pregunta que no encaje en las acciones de arriba — dudas generales sobre el celular ("¿cómo bajo el brillo?", "¿qué es el modo avión?", "¿cómo libero espacio?"), preguntas de cultura general, cálculos, curiosidades, o cualquier cosa que el usuario simplemente quiera que le respondas hablando, sin ejecutar ninguna acción real. params: { "query": string (la pregunta tal cual la hizo el usuario) }
+    Para esta acción en particular, actúa como un experto genuino en Android y smartphones: da instrucciones claras y precisas (ej. la ruta exacta en Ajustes cuando aplique), y para preguntas generales responde con la mejor información que tengas. El "feedbackText" en este caso debe ser la respuesta completa y útil (no solo una confirmación corta como en las otras acciones) — hablada de forma natural, como si un experto te la explicara por voz.
 
 Contactos conocidos del usuario: ${JSON.stringify(contacts.map((c: any) => c.name || c.nickname || ''))}
 Apps instaladas conocidas: ${JSON.stringify(installedApps.map((a: any) => typeof a === 'string' ? a : a.name || ''))}
