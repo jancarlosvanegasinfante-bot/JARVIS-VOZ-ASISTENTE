@@ -66,6 +66,21 @@ Acciones permitidas y sus parámetros:
 Contactos conocidos del usuario: ${JSON.stringify(contacts.map((c: any) => c.name || c.nickname || ''))}
 Apps instaladas conocidas: ${JSON.stringify(installedApps.map((a: any) => typeof a === 'string' ? a : a.name || ''))}
 
+REGLAS DE DESAMBIGUACIÓN (muy importantes, se confunden fácil):
+- "pon" / "ponme" es AMBIGUO en español: puede ser música ("ponme una canción de Bad Bunny", "pon reggaeton") o una alarma ("ponme una alarma a las 7", "ponme un recordatorio mañana"). Para decidir cuál es, fíjate en las palabras clave que acompañan:
+  - Si menciona "alarma", "recordatorio", "despiértame", una HORA (ej "a las 7", "en 20 minutos") o una FECHA → es "set_reminder", NUNCA "play_spotify" ni "play_youtube".
+  - Si menciona una canción, artista, género musical, o dice "música"/"canción" sin hora ni fecha → es "play_spotify" (o "play_youtube" si menciona explícitamente YouTube/video).
+- Para números de teléfono dictados por voz (ej "3133615984" o "313 361 5984" o "tres uno tres, tres seis uno..."): concaténalos en un solo string de puros dígitos sin espacios en "phoneNumber", ignorando palabras como "el número", "es", "al". Si el usuario dice un número de 10 dígitos directo, ese ES el phoneNumber, aunque no tengas ese contacto guardado — no lo rechaces ni lo confundas con otra acción.
+- Si el comando menciona explícitamente WhatsApp ("escríbele por WhatsApp", "mándale un WhatsApp") junto con un número o contacto, SIEMPRE es "send_whatsapp", nunca "send_sms" ni "make_call".
+
+Ejemplos de clasificación correcta (formato: transcripción -> acción):
+- "ponme una alarma a las 7 de la mañana" -> action: "set_reminder", params: { "time": "07:00", "title": "Alarma" }
+- "ponme la canción Ojos Verdes de Toby Love" -> action: "play_spotify", params: { "track": "Ojos Verdes Toby Love" }
+- "pon reggaeton" -> action: "play_spotify", params: { "track": "reggaeton mix" }
+- "ve a whatsapp y escríbele a este número 3133615984 que haces" -> action: "send_whatsapp", params: { "phoneNumber": "3133615984", "message": "¿Qué haces?" }
+- "recuérdame mañana a las 3 llamar al banco" -> action: "set_reminder", params: { "time": "15:00", "date": "mañana", "title": "Llamar al banco" }
+- "oye dime qué es una campaña advantage" -> action: "general_query", params: { "query": "qué es una campaña advantage" }
+
 Devuelve un objeto JSON estricto con:
 {
   "action": string (una de las acciones permitidas),
@@ -133,6 +148,16 @@ Devuelve un objeto JSON estricto con:
     let feedbackText = 'Buscando en Google...';
     let explanation = 'Búsqueda web por defecto';
 
+    // Extracción de número de teléfono dictado directo por voz (ej "3133615984" o "313 361 5984")
+    const extractPhoneNumber = (text: string): string => {
+      const digitsOnly = text.replace(/[^0-9]/g, '');
+      // Un celular colombiano tiene 10 dígitos; aceptamos 7-10 para cubrir fijos también
+      if (digitsOnly.length >= 7 && digitsOnly.length <= 12) {
+        return digitsOnly;
+      }
+      return '';
+    };
+
     // Extracción de Alarma
     const extractAlarmDetails = (text: string) => {
       const textL = text.toLowerCase();
@@ -190,24 +215,24 @@ Devuelve un objeto JSON estricto con:
       params = { message: msg || 'Llego pronto' };
       feedbackText = `Enviando respuesta: "${params.message}"`;
       explanation = 'Respuesta por voz a notificación recibida';
-    } else if (textLower.includes('youtube') || textLower.includes('video') || textLower.includes('pon la canción') || textLower.includes('pon en youtube')) {
-      action = 'play_youtube';
-      const q = transcript.replace(/.*(youtube|pon la canción|pon|video|busca en youtube)\s*/i, '').trim();
-      params = { query: q || transcript };
-      feedbackText = `Buscando en YouTube: "${params.query}"`;
-      explanation = 'Reproducción de audio/video en YouTube';
-    } else if (textLower.includes('spotify') || textLower.includes('música en spotify') || textLower.includes('pon a')) {
-      action = 'play_spotify';
-      const trk = transcript.replace(/.*(spotify|música|musica|canción|cancion|pon a)\s*/i, '').trim();
-      params = { track: trk || transcript };
-      feedbackText = `Reproduciendo en Spotify: "${params.track}"`;
-      explanation = 'Reproducción multimedia en Spotify';
-    } else if (textLower.includes('alarma') || textLower.includes('despiértame') || textLower.includes('recordatorio')) {
+    } else if (textLower.includes('alarma') || textLower.includes('despiértame') || textLower.includes('despierta') || textLower.includes('recordatorio') || textLower.includes('recuérdame') || textLower.includes('recuerdame')) {
       action = 'set_reminder';
       const details = extractAlarmDetails(transcript);
       params = { title: details.title, time: details.time };
       feedbackText = details.feedbackText;
       explanation = 'Creación de alarma nativa de Android';
+    } else if (textLower.includes('youtube') || textLower.includes('video') || textLower.includes('pon en youtube')) {
+      action = 'play_youtube';
+      const q = transcript.replace(/.*(youtube|pon|video|busca en youtube)\s*/i, '').trim();
+      params = { query: q || transcript };
+      feedbackText = `Buscando en YouTube: "${params.query}"`;
+      explanation = 'Reproducción de audio/video en YouTube';
+    } else if (textLower.includes('spotify') || textLower.includes('música') || textLower.includes('musica') || textLower.includes('canción') || textLower.includes('cancion') || textLower.includes('reggaeton') || textLower.includes('rola')) {
+      action = 'play_spotify';
+      const trk = transcript.replace(/.*(spotify|ponme|pon|música|musica|canción|cancion|la canción de|de)\s*/i, '').trim();
+      params = { track: trk || transcript };
+      feedbackText = `Reproduciendo en Spotify: "${params.track}"`;
+      explanation = 'Reproducción multimedia en Spotify';
     } else if (textLower.includes('sms') || textLower.includes('mensaje de texto')) {
       action = 'send_sms';
       const cName = extractContact(transcript);
@@ -217,17 +242,19 @@ Devuelve un objeto JSON estricto con:
       explanation = 'Envío de SMS nativo';
     } else if (textLower.includes('whatsapp') || textLower.includes('escríbele a') || textLower.includes('mensaje a')) {
       action = 'send_whatsapp';
-      const cName = extractContact(transcript);
+      const rawPhone = extractPhoneNumber(transcript);
+      const cName = rawPhone ? '' : extractContact(transcript);
       const msg = transcript.replace(/.*(diciendo|que)\s*/i, '').trim();
-      params = { contact: cName, message: msg };
-      feedbackText = `Abriendo WhatsApp para enviarle a ${cName}: "${params.message}"`;
-      explanation = `Envío de WhatsApp a ${cName}`;
+      params = { contact: cName, phoneNumber: rawPhone, message: msg };
+      feedbackText = `Abriendo WhatsApp para enviarle a ${rawPhone || cName}: "${params.message}"`;
+      explanation = `Envío de WhatsApp a ${rawPhone || cName}`;
     } else if (textLower.includes('llama') || textLower.includes('llamar') || textLower.includes('marcar')) {
       action = 'make_call';
-      const cName = extractContact(transcript);
-      params = { contact: cName };
-      feedbackText = `Iniciando llamada a ${cName}...`;
-      explanation = `Llamada telefónica a ${cName}`;
+      const rawPhone = extractPhoneNumber(transcript);
+      const cName = rawPhone ? '' : extractContact(transcript);
+      params = { contact: cName, phoneNumber: rawPhone };
+      feedbackText = `Iniciando llamada a ${rawPhone || cName}...`;
+      explanation = `Llamada telefónica a ${rawPhone || cName}`;
     } else if (textLower.includes('cierra') || textLower.includes('cerrar') || textLower.includes('inicio') || textLower.includes('atrás')) {
       action = 'close_app';
       feedbackText = 'Cerrando aplicación...';
