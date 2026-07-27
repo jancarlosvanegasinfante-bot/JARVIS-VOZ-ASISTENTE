@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Smartphone, LayoutDashboard, Volume2, VolumeX, ShieldCheck, Zap, Sparkles, Mic } from 'lucide-react';
-import { PhoneFrame } from './components/PhoneFrame';
+import { Volume2, VolumeX, Mic } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
+import { WhatsAppAccessibilityOverlay } from './components/WhatsAppAccessibilityOverlay';
 import { INITIAL_CONTACTS, INITIAL_SALES_DATA } from './data/mockData';
 import { Contact, CommandLog, IntentResult, SalesData } from './types';
 import { audioEngine } from './utils/audioSynth';
 
 // Puente hacia la app nativa de Android (solo existe cuando corres dentro
 // del APK de Jarvis; en el navegador normal simplemente no está definido
-// y todo sigue funcionando igual que ahora, sin control real del celular).
+// y todo sigue funcionando igual que ahora).
 declare global {
   interface Window {
     AndroidBridge?: {
@@ -51,6 +51,7 @@ export default function App() {
     }
     return INITIAL_CONTACTS;
   });
+
   const [installedApps, setInstalledApps] = useState<any[]>(() => [
     { id: 'a1', name: 'WhatsApp', packageName: 'com.whatsapp' },
     { id: 'a2', name: 'Teléfono', packageName: 'com.android.dialer' },
@@ -58,15 +59,20 @@ export default function App() {
     { id: 'a4', name: 'JANBOT Analytics', packageName: 'com.janbot.shop' },
     { id: 'a5', name: 'Reloj', packageName: 'com.android.deskclock' },
     { id: 'a6', name: 'SMS', packageName: 'com.android.mms' },
-    { id: 'a7', name: 'Browser', packageName: 'com.android.chrome' },
+    { id: 'a7', name: 'Chrome', packageName: 'com.android.chrome' },
     { id: 'a8', name: 'Notas', packageName: 'com.android.notes' },
+    { id: 'a9', name: 'Cámara', packageName: 'com.android.camera' },
+    { id: 'a10', name: 'Galería', packageName: 'com.sec.android.gallery3d' },
+    { id: 'a11', name: 'Maps', packageName: 'com.google.android.apps.maps' },
+    { id: 'a12', name: 'Contactos', packageName: 'com.android.contacts' },
   ]);
+
   const [isNativeBridgeActive, setIsNativeBridgeActive] = useState(false);
   const [logs, setLogs] = useState<CommandLog[]>([]);
   const [salesData] = useState<SalesData>(INITIAL_SALES_DATA);
   const [accessibilityActive, setAccessibilityActive] = useState(true);
 
-  // Sync contacts to localStorage whenever they change
+  // Sync contacts to localStorage
   useEffect(() => {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
@@ -88,7 +94,7 @@ export default function App() {
   // SpeechRecognition Web API Ref
   const recognitionRef = useRef<any>(null);
 
-  // Automatic live sync with real Android hardware (retries handle webview race-conditions)
+  // Automatic live sync with real Android hardware
   useEffect(() => {
     let attempts = 0;
     const maxAttempts = 15;
@@ -162,7 +168,7 @@ export default function App() {
     const syncInterval = setInterval(trySync, 1000);
     trySync();
 
-    // Register globally exposed bridge receivers (if Android pushes data directly)
+    // Register globally exposed bridge receivers
     (window as any).updateAndroidContacts = (contactsJson: string) => {
       try {
         const parsed = JSON.parse(contactsJson);
@@ -177,7 +183,6 @@ export default function App() {
           }));
           setContacts(mapped);
           setIsNativeBridgeActive(true);
-          console.log("✔ Sincronización push de contactos completada:", mapped.length);
         }
       } catch (err) {
         console.error("Error en updateAndroidContacts push:", err);
@@ -198,7 +203,6 @@ export default function App() {
           }));
           setInstalledApps(mapped);
           setIsNativeBridgeActive(true);
-          console.log("✔ Sincronización push de apps completada:", mapped.length);
         }
       } catch (err) {
         console.error("Error en updateAndroidApps push:", err);
@@ -210,7 +214,6 @@ export default function App() {
 
   useEffect(() => {
     try {
-      // Initialize Web Speech Recognition if available with safety guards
       const SpeechRecognition =
         typeof window !== 'undefined'
           ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -250,137 +253,122 @@ export default function App() {
 
         recognitionRef.current = recognition;
       }
-    } catch (err) {
-      console.warn('No se pudo inicializar SpeechRecognition (no soportado o denegado por WebView):', err);
+    } catch (e) {
+      console.warn("Speech recognition initialization fallback:", e);
     }
   }, []);
 
+  // Handle Speech Recognition Toggle
   const handleStartListening = () => {
-    setTranscript('');
-    audioEngine.playWakeChime();
-
-    // 1. Prioridad: micrófono NATIVO de Android (funciona dentro del APK,
-    // donde el Web Speech API del navegador no existe)
-    if (typeof window !== 'undefined' && window.AndroidBridge && typeof (window.AndroidBridge as any).startListening === 'function') {
-      (window.AndroidBridge as any).startListening();
-      return;
+    if (typeof window !== 'undefined' && window.AndroidBridge?.startListening) {
+      try {
+        window.AndroidBridge.startListening();
+        setIsListening(true);
+        return;
+      } catch (e) {
+        console.warn("Failed native startListening:", e);
+      }
     }
 
-    // 2. Fallback: Web Speech API del navegador (para cuando pruebas en Chrome/AI Studio)
     if (recognitionRef.current) {
       try {
+        setTranscript('');
         recognitionRef.current.start();
-      } catch {
-        setIsListening(true);
+      } catch (e) {
+        console.warn("Recognition already active or failed:", e);
       }
     } else {
+      const simulatedText = "Enviar un WhatsApp a Juan Carlos diciendo que ya voy de camino";
+      setTranscript(simulatedText);
       setIsListening(true);
+      setTimeout(() => {
+        setIsListening(false);
+        handleProcessCommand(simulatedText);
+      }, 1500);
     }
   };
 
   const handleStopListening = () => {
-    // Si estamos usando el micrófono nativo, el propio Android nos avisa
-    // cuándo terminó (window.onNativeListeningState) y nos manda el texto
-    // final (window.onNativeTranscript), así que aquí solo le pedimos que pare.
-    if (typeof window !== 'undefined' && window.AndroidBridge && typeof (window.AndroidBridge as any).stopListening === 'function') {
-      (window.AndroidBridge as any).stopListening();
-      return;
+    if (typeof window !== 'undefined' && window.AndroidBridge?.stopListening) {
+      try {
+        window.AndroidBridge.stopListening();
+        setIsListening(false);
+      } catch (e) {
+        console.warn("Failed native stopListening:", e);
+      }
     }
 
-    setIsListening(false);
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
-      } catch {
-        // Ignore
+      } catch (e) {
+        console.warn("Failed to stop recognition:", e);
       }
     }
+    setIsListening(false);
     if (transcript.trim()) {
       handleProcessCommand(transcript.trim());
     }
   };
 
-  // Receptores de los resultados que manda el micrófono NATIVO de Android
-  // (ver MainActivity.kt -> startNativeListening). Solo se usan dentro del APK.
-  useEffect(() => {
-    (window as any).onNativeListeningState = (listening: boolean) => {
-      setIsListening(listening);
-    };
-
-    (window as any).onNativeTranscript = (text: string, isFinal: boolean) => {
-      setTranscript(text);
-      if (isFinal && text.trim()) {
-        handleProcessCommand(text.trim());
-      }
-    };
-
-    return () => {
-      delete (window as any).onNativeListeningState;
-      delete (window as any).onNativeTranscript;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  // Browser-level Action Execution fallback
   const executeRealBrowserAction = (intent: IntentResult) => {
-    try {
-      const action = intent.action;
-      const params = intent.params || {};
-
-      if (action === 'send_whatsapp') {
-        const contactQuery = (params.contact || '').toLowerCase();
-        const matched = contacts.find(
-          (c) => c.name.toLowerCase().includes(contactQuery) || (c.nickname && c.nickname.toLowerCase().includes(contactQuery))
-        ) || contacts[0];
-
-        const phone = (matched?.phone || '573000000000').replace(/\D/g, '');
-        const msg = encodeURIComponent(params.message || 'Hola desde Jarvis');
-        window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${msg}`, '_blank');
-      } else if (action === 'make_call') {
-        const contactQuery = (params.contact || '').toLowerCase();
-        const matched = contacts.find(
-          (c) => c.name.toLowerCase().includes(contactQuery) || (c.nickname && c.nickname.toLowerCase().includes(contactQuery))
-        ) || contacts[0];
-
-        const phone = (matched?.phone || '1234567890').replace(/\D/g, '');
-        window.location.href = `tel:${phone}`;
-      } else if (action === 'open_app' || action === 'control_music') {
-        const appName = (params.appName || params.command || '').toLowerCase();
-        if (appName.includes('spotify') || action === 'control_music') {
-          window.open('https://open.spotify.com', '_blank');
-        } else if (appName.includes('reloj') || appName.includes('clock') || appName.includes('alarma')) {
-          window.location.href = 'intent://com.android.deskclock/#Intent;scheme=android-app;end';
-        } else if (appName.includes('whatsapp')) {
-          window.open('https://api.whatsapp.com/send?phone=', '_blank');
-        } else {
-          window.open('https://www.google.com', '_blank');
-        }
-      } else if (action === 'set_reminder') {
-        const title = encodeURIComponent(params.title || 'Alarma Jarvis');
-        const timeParts = (params.time || '07:00').split(':');
-        const hour = parseInt(timeParts[0] || '7', 10);
-        const minute = parseInt(timeParts[1] || '0', 10);
-        window.location.href = `intent://#Intent;action=android.intent.action.SET_ALARM;S.android.intent.extra.MESSAGE=${title};i.android.intent.extra.HOUR=${hour};i.android.intent.extra.MINUTES=${minute};end`;
-      } else if (action === 'search_web') {
-        const q = encodeURIComponent(params.query || intent.feedbackText || 'Jarvis Voice');
-        window.open(`https://www.google.com/search?q=${q}`, '_blank');
+    const { action, params } = intent;
+    if (action === 'send_whatsapp') {
+      const matchedContact = contacts.find(
+        (c) =>
+          c.name.toLowerCase().includes((params.contact || '').toLowerCase()) ||
+          (c.nickname && c.nickname.toLowerCase().includes((params.contact || '').toLowerCase()))
+      );
+      const rawPhone = params.phoneNumber || (matchedContact ? matchedContact.phone : '');
+      const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+      const encodedMsg = encodeURIComponent(params.message || 'Hola');
+      if (cleanPhone) {
+        window.open(`https://wa.me/${cleanPhone}?text=${encodedMsg}`, '_blank');
+      } else {
+        window.open(`https://wa.me/?text=${encodedMsg}`, '_blank');
       }
-    } catch (e) {
-      console.warn("Real browser action dispatch error:", e);
+    } else if (action === 'make_call') {
+      const matchedContact = contacts.find(
+        (c) =>
+          c.name.toLowerCase().includes((params.contact || '').toLowerCase()) ||
+          (c.nickname && c.nickname.toLowerCase().includes((params.contact || '').toLowerCase()))
+      );
+      const rawPhone = params.phoneNumber || (matchedContact ? matchedContact.phone : '');
+      const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+      if (cleanPhone) {
+        window.open(`tel:${cleanPhone}`, '_self');
+      }
+    } else if (action === 'open_app') {
+      const appName = (params.appName || '').toLowerCase();
+      if (appName.includes('spotify')) {
+        window.open('https://open.spotify.com', '_blank');
+      } else if (appName.includes('youtube')) {
+        window.open('https://youtube.com', '_blank');
+      } else if (appName.includes('chrome') || appName.includes('browser')) {
+        window.open('https://google.com', '_blank');
+      }
+    } else if (action === 'search_web') {
+      const query = encodeURIComponent(params.query || params.content || 'Jarvis Voice');
+      window.open(`https://www.google.com/search?q=${query}`, '_blank');
     }
   };
 
+  // Main Command Processor via Backend
   const handleProcessCommand = async (commandText: string) => {
-    setIsListening(false);
+    if (!commandText.trim()) return;
+
     setIsProcessing(true);
 
     try {
-      const response = await fetch('/api/parse-intent', {
+      const response = await fetch('/api/intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           transcript: commandText,
-          contacts: contacts.map((c) => ({ name: c.name, nickname: c.nickname, phone: c.phone })),
-          installedApps: installedApps.map((a) => a.name),
+          contacts,
+          installedApps,
+          salesData,
         }),
       });
 
@@ -391,23 +379,20 @@ export default function App() {
         const intent: IntentResult = data.intent;
         setLastIntent(intent);
 
-        // Sound Feedback
-        audioEngine.playSuccessPing();
-
-        // Speech Feedback
-        if (ttsEnabled && intent.feedbackText) {
+        // Hablar respuesta por voz (TTS)
+        if (ttsEnabled) {
           setIsSpeaking(true);
           audioEngine.speak(intent.feedbackText, () => setIsSpeaking(false));
         }
 
-        // Ejecutar acción DE VERDAD en el celular (vía Bridge o Deep Link directo)
+        // Ejecutar acción DE VERDAD en el celular (vía Bridge o Browser)
         if (typeof window !== 'undefined' && window.AndroidBridge) {
           window.AndroidBridge.executeAction(JSON.stringify(intent));
         } else {
           executeRealBrowserAction(intent);
         }
 
-        // WhatsApp Accessibility Service Trigger (solo en simulador visual)
+        // WhatsApp Accessibility Service Trigger
         if (intent.action === 'send_whatsapp' && accessibilityActive && !window.AndroidBridge) {
           const matchedContact = contacts.find(
             (c) =>
@@ -417,7 +402,7 @@ export default function App() {
 
           setActiveWhatsAppFlow({
             contactName: matchedContact.name,
-            phoneNumber: matchedContact.phone,
+            phoneNumber: intent.params.phoneNumber || matchedContact.phone,
             message: intent.params.message || 'Mensaje enviado por voz con Jarvis',
           });
         } else {
@@ -452,49 +437,14 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-white flex flex-col font-sans selection:bg-[#00f2ff] selection:text-[#0a0a0c]">
-      {/* Immersive Header Navbar */}
-      <header className="bg-[#141418]/90 border-b border-white/10 sticky top-0 z-50 backdrop-blur-md px-6 py-3.5">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#00f2ff]/20 to-[#0066ff]/20 border border-[#00f2ff]/50 flex items-center justify-center text-[#00f2ff] shadow-[0_0_20px_rgba(0,242,255,0.4)] group">
-              <Mic className="w-5 h-5 text-[#00f2ff] animate-pulse" />
-              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#00f2ff] border-2 border-[#141418] shadow-[0_0_8px_#00f2ff]" />
-            </div>
-            <div>
-              <h1 className="text-lg font-black tracking-tight uppercase italic flex items-center gap-2">
-                JARVIS VOICE <span className="text-[#00f2ff] font-mono font-bold text-xs not-italic bg-[#00f2ff]/10 px-2 py-0.5 rounded border border-[#00f2ff]/30">v1.1.0</span>
-              </h1>
-              <p className="text-[10px] text-gray-400 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                Asistente Inteligente de Voz
-              </p>
-            </div>
-          </div>
-
-          {/* Right Metrics & Controls */}
-          <div className="flex items-center gap-6 text-[11px] font-mono text-gray-400">
-            <div className="hidden md:flex flex-col items-end">
-              <span className="text-[#00f2ff]">ENGINE LOAD ACTIVE</span>
-              <span>ANDROID BRIDGE SYNCED</span>
-            </div>
-            <button
-              onClick={() => setTtsEnabled(!ttsEnabled)}
-              className={`p-2 rounded-xl border transition-colors ${
-                ttsEnabled
-                  ? 'bg-[#00f2ff]/20 text-[#00f2ff] border-[#00f2ff]/40 shadow-[0_0_10px_rgba(0,242,255,0.2)]'
-                  : 'bg-[#141418] text-gray-500 border-white/10'
-              }`}
-              title={ttsEnabled ? 'Voz TTS Activada' : 'Voz TTS Silenciada'}
-            >
-              {ttsEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-[#080911] text-white flex flex-col font-sans selection:bg-cyan-400 selection:text-slate-950 relative overflow-x-hidden">
+      
+      {/* Background ambient neon radial glows */}
+      <div className="fixed top-0 left-1/4 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="fixed bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[140px] pointer-events-none" />
 
       {/* Main Body View */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
+      <main className="flex-1 w-full pt-4 md:pt-6">
         <Dashboard
           logs={logs}
           contacts={contacts}
@@ -516,19 +466,16 @@ export default function App() {
         />
       </main>
 
-      {/* Immersive Footer */}
-      <footer className="border-t border-white/10 bg-[#0a0a0c] py-3.5 px-6 text-[10px] font-mono text-gray-500 hidden md:block">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex gap-4">
-            <span>SECURE CHANNEL: SSL/AES-256</span>
-            <span>MODEL: GEMINI-3.5-FLASH-LIVE</span>
-          </div>
-          <div className="flex gap-4">
-            <span>SESSION_ID: JARVIS-SYNC-LIVE</span>
-            <span className="text-[#00f2ff]">MODO REAL ACTIVO</span>
-          </div>
-        </div>
-      </footer>
+      {/* WhatsApp Accessibility Overlay Simulation Modal */}
+      {activeWhatsAppFlow && (
+        <WhatsAppAccessibilityOverlay
+          contactName={activeWhatsAppFlow.contactName}
+          phoneNumber={activeWhatsAppFlow.phoneNumber}
+          message={activeWhatsAppFlow.message}
+          onComplete={() => setActiveWhatsAppFlow(null)}
+          onClose={() => setActiveWhatsAppFlow(null)}
+        />
+      )}
     </div>
   );
 }
