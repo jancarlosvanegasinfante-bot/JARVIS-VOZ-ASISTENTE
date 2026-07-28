@@ -29,6 +29,7 @@ export interface ActionParams {
   date?: string;
   time?: string;
   appName?: string;
+  packageName?: string;
   query?: string;
   level?: number;
   command?: 'play' | 'pause' | 'next' | 'prev' | 'volume_up' | 'volume_down';

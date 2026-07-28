@@ -346,78 +346,102 @@ export default function App() {
     }
   };
 
-  // Browser-level Action Execution fallback & WEB execution
+  // Browser-level Action Execution & Android Intent dispatch
   const executeRealBrowserAction = (intent: IntentResult) => {
     const { action, params } = intent;
 
-    if (action === 'send_whatsapp') {
-      const matchedContact = contacts.find(
-        (c) =>
-          c.name.toLowerCase().includes((params.contact || '').toLowerCase()) ||
-          (c.nickname && c.nickname.toLowerCase().includes((params.contact || '').toLowerCase()))
-      );
-      const rawPhone = params.phoneNumber || (matchedContact ? matchedContact.phone : '');
-      const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
-      const encodedMsg = encodeURIComponent(params.message || 'Hola');
-      if (cleanPhone) {
-        window.open(`https://wa.me/${cleanPhone}?text=${encodedMsg}`, '_blank');
-      } else {
-        window.open(`https://wa.me/?text=${encodedMsg}`, '_blank');
+    try {
+      if (action === 'send_whatsapp') {
+        const matchedContact = contacts.find(
+          (c) =>
+            c.name.toLowerCase().includes((params.contact || '').toLowerCase()) ||
+            (c.nickname && c.nickname.toLowerCase().includes((params.contact || '').toLowerCase()))
+        );
+        const rawPhone = params.phoneNumber || (matchedContact ? matchedContact.phone : '');
+        const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+        const encodedMsg = encodeURIComponent(params.message || 'Hola');
+        if (cleanPhone) {
+          window.location.href = `whatsapp://send?phone=${cleanPhone}&text=${encodedMsg}`;
+          setTimeout(() => {
+            window.location.href = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMsg}`;
+          }, 400);
+        } else {
+          window.location.href = `https://api.whatsapp.com/send?text=${encodedMsg}`;
+        }
+      } else if (action === 'send_sms') {
+        const matchedContact = contacts.find(
+          (c) =>
+            c.name.toLowerCase().includes((params.contact || '').toLowerCase()) ||
+            (c.nickname && c.nickname.toLowerCase().includes((params.contact || '').toLowerCase()))
+        );
+        const rawPhone = params.phoneNumber || (matchedContact ? matchedContact.phone : '');
+        const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+        const encodedMsg = encodeURIComponent(params.message || 'Hola');
+        window.location.href = `sms:${cleanPhone}?body=${encodedMsg}`;
+      } else if (action === 'make_call') {
+        const matchedContact = contacts.find(
+          (c) =>
+            c.name.toLowerCase().includes((params.contact || '').toLowerCase()) ||
+            (c.nickname && c.nickname.toLowerCase().includes((params.contact || '').toLowerCase()))
+        );
+        const rawPhone = params.phoneNumber || (matchedContact ? matchedContact.phone : '');
+        const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+        if (cleanPhone) {
+          window.location.href = `tel:${cleanPhone}`;
+        } else {
+          window.location.href = 'tel:';
+        }
+      } else if (action === 'play_youtube') {
+        const query = encodeURIComponent(params.query || params.track || 'musica');
+        window.location.href = `vnd.youtube://results?search_query=${query}`;
+        setTimeout(() => {
+          window.location.href = `https://www.youtube.com/results?search_query=${query}`;
+        }, 400);
+      } else if (action === 'play_spotify') {
+        const track = encodeURIComponent(params.track || 'musica');
+        window.location.href = `spotify:search:${track}`;
+        setTimeout(() => {
+          window.location.href = `https://open.spotify.com/search/${track}`;
+        }, 400);
+      } else if (action === 'open_app') {
+        const appName = (params.appName || '').toLowerCase();
+        const pkg = params.packageName;
+
+        if (pkg) {
+          window.location.href = `intent://#Intent;scheme=package;package=${pkg};end`;
+        } else if (appName.includes('camara') || appName.includes('cámara') || appName.includes('foto')) {
+          window.location.href = 'intent://#Intent;action=android.media.action.IMAGE_CAPTURE;end';
+        } else if (appName.includes('chrome') || appName.includes('browser') || appName.includes('navegador')) {
+          window.location.href = 'googlechrome://';
+          setTimeout(() => { window.location.href = 'https://www.google.com'; }, 400);
+        } else if (appName.includes('whatsapp')) {
+          window.location.href = 'whatsapp://';
+        } else if (appName.includes('spotify')) {
+          window.location.href = 'spotify://';
+        } else if (appName.includes('youtube')) {
+          window.location.href = 'vnd.youtube://';
+        } else if (appName.includes('map') || appName.includes('gps')) {
+          window.location.href = 'geo:0,0';
+        } else {
+          window.location.href = `https://www.google.com/search?q=${encodeURIComponent(params.appName || 'app')}`;
+        }
+      } else if (action === 'take_photo' || action === 'open_camera') {
+        window.location.href = 'intent://#Intent;action=android.media.action.IMAGE_CAPTURE;end';
+      } else if (action === 'toggle_wifi') {
+        window.location.href = 'intent://#Intent;action=android.settings.WIFI_SETTINGS;end';
+      } else if (action === 'toggle_bluetooth') {
+        window.location.href = 'intent://#Intent;action=android.settings.BLUETOOTH_SETTINGS;end';
+      } else if (action === 'airplane_mode' || action === 'toggle_flashlight') {
+        window.location.href = 'intent://#Intent;action=android.settings.SETTINGS;end';
+      } else if (action === 'search_web' || action === 'general_query') {
+        const query = encodeURIComponent(params.query || params.content || 'Jarvis Voice');
+        window.location.href = `https://www.google.com/search?q=${query}`;
+      } else if (action === 'set_reminder') {
+        const title = encodeURIComponent(params.title || 'Recordatorio Jarvis');
+        window.location.href = `https://calendar.google.com/calendar/u/0/r/eventedit?text=${title}`;
       }
-    } else if (action === 'send_sms') {
-      const matchedContact = contacts.find(
-        (c) =>
-          c.name.toLowerCase().includes((params.contact || '').toLowerCase()) ||
-          (c.nickname && c.nickname.toLowerCase().includes((params.contact || '').toLowerCase()))
-      );
-      const rawPhone = params.phoneNumber || (matchedContact ? matchedContact.phone : '');
-      const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
-      const encodedMsg = encodeURIComponent(params.message || 'Hola');
-      window.open(`sms:${cleanPhone}?body=${encodedMsg}`, '_self');
-    } else if (action === 'make_call') {
-      const matchedContact = contacts.find(
-        (c) =>
-          c.name.toLowerCase().includes((params.contact || '').toLowerCase()) ||
-          (c.nickname && c.nickname.toLowerCase().includes((params.contact || '').toLowerCase()))
-      );
-      const rawPhone = params.phoneNumber || (matchedContact ? matchedContact.phone : '');
-      const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
-      if (cleanPhone) {
-        window.open(`tel:${cleanPhone}`, '_self');
-      } else {
-        window.open('tel:', '_self');
-      }
-    } else if (action === 'play_youtube') {
-      const query = encodeURIComponent(params.query || params.track || 'musica');
-      window.open(`https://www.youtube.com/results?search_query=${query}`, '_blank');
-    } else if (action === 'play_spotify') {
-      const track = encodeURIComponent(params.track || 'musica');
-      window.open(`https://open.spotify.com/search/${track}`, '_blank');
-    } else if (action === 'open_app') {
-      const appName = (params.appName || '').toLowerCase();
-      if (appName.includes('spotify')) {
-        window.open('https://open.spotify.com', '_blank');
-      } else if (appName.includes('youtube')) {
-        window.open('https://youtube.com', '_blank');
-      } else if (appName.includes('whatsapp')) {
-        window.open('https://web.whatsapp.com', '_blank');
-      } else if (appName.includes('chrome') || appName.includes('browser') || appName.includes('navegador')) {
-        window.open('https://google.com', '_blank');
-      } else if (appName.includes('map') || appName.includes('gps')) {
-        window.open('https://maps.google.com', '_blank');
-      } else if (appName.includes('camara') || appName.includes('cámara') || appName.includes('foto')) {
-        window.open('https://camera.google.com', '_blank');
-      } else {
-        window.open(`https://www.google.com/search?q=${encodeURIComponent(params.appName || 'app')}`, '_blank');
-      }
-    } else if (action === 'search_web' || action === 'general_query') {
-      const query = encodeURIComponent(params.query || params.content || 'Jarvis Voice');
-      window.open(`https://www.google.com/search?q=${query}`, '_blank');
-    } else if (action === 'set_reminder') {
-      const title = encodeURIComponent(params.title || 'Recordatorio Jarvis');
-      window.open(`https://calendar.google.com/calendar/u/0/r/eventedit?text=${title}`, '_blank');
-    } else if (action === 'take_photo' || action === 'open_camera') {
-      window.open('https://camera.google.com', '_blank');
+    } catch (err) {
+      console.warn("Error executing real action:", err);
     }
   };
 
@@ -461,19 +485,29 @@ export default function App() {
 
         // Ejecutar acción DE VERDAD en el celular (vía Bridge o Browser)
         if (typeof window !== 'undefined' && window.AndroidBridge) {
+          const bridge = window.AndroidBridge as any;
           try {
-            if (typeof window.AndroidBridge.executeAction === 'function') {
-              window.AndroidBridge.executeAction(JSON.stringify(intent));
-            } else {
-              executeRealBrowserAction(intent);
+            if (typeof bridge.executeAction === 'function') {
+              bridge.executeAction(JSON.stringify(intent));
+            }
+            // Explicit helper calls
+            if (intent.action === 'open_camera' || intent.action === 'take_photo') {
+              if (typeof bridge.openCamera === 'function') bridge.openCamera();
+              if (typeof bridge.takePhoto === 'function') bridge.takePhoto();
+            } else if (intent.action === 'open_app') {
+              if (typeof bridge.openApp === 'function') bridge.openApp(intent.params.packageName || intent.params.appName);
+            } else if (intent.action === 'make_call') {
+              if (typeof bridge.makeCall === 'function') bridge.makeCall(intent.params.phoneNumber || '');
+            } else if (intent.action === 'send_whatsapp') {
+              if (typeof bridge.sendWhatsApp === 'function') bridge.sendWhatsApp(intent.params.phoneNumber || '', intent.params.message || '');
             }
           } catch (e) {
-            console.warn("Native executeAction error, using browser fallback:", e);
-            executeRealBrowserAction(intent);
+            console.warn("Native bridge call warning:", e);
           }
-        } else {
-          executeRealBrowserAction(intent);
         }
+        
+        // Execute browser / Android Intent redirection
+        executeRealBrowserAction(intent);
 
         // WhatsApp Accessibility Service Trigger
         if (intent.action === 'send_whatsapp' && accessibilityActive && !window.AndroidBridge) {

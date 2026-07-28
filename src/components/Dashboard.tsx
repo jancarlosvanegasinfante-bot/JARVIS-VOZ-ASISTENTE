@@ -81,6 +81,30 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [notificationsCount, setNotificationsCount] = useState(3);
   const [showAllAppsModal, setShowAllAppsModal] = useState(false);
   const [appSearchQuery, setAppSearchQuery] = useState('');
+  const [activeBanner, setActiveBanner] = useState<{ text: string; time: number } | null>(null);
+  const [clickingApp, setClickingApp] = useState<string | null>(null);
+
+  // Trigger app action with instant visual & haptic feedback
+  const triggerAppAction = (cmd: string, appLabel?: string) => {
+    if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+      try {
+        window.navigator.vibrate([30, 40, 30]);
+      } catch (e) {}
+    }
+    const label = appLabel || cmd;
+    setClickingApp(label);
+    setActiveBanner({ text: `⚡ INICIANDO: ${label}...`, time: Date.now() });
+
+    onTestCommand(cmd);
+
+    setTimeout(() => {
+      setClickingApp(null);
+    }, 1500);
+
+    setTimeout(() => {
+      setActiveBanner(null);
+    }, 3500);
+  };
 
   // Handle Command Submission
   const handleManualSubmit = (e: React.FormEvent) => {
@@ -120,7 +144,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
   ];
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-5 px-3 md:px-6 font-sans pb-28 text-slate-100 selection:bg-cyan-400 selection:text-slate-950">
+    <div className="w-full max-w-7xl mx-auto space-y-5 px-3 md:px-6 font-sans pb-28 text-slate-100 selection:bg-cyan-400 selection:text-slate-950 relative">
+      
+      {/* Active Action Toast Banner */}
+      {(activeBanner || isProcessing) && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-gradient-to-r from-cyan-600 via-blue-600 to-purple-600 border-2 border-cyan-300 text-white px-6 py-3 rounded-full shadow-[0_0_30px_rgba(0,242,255,0.9)] font-mono text-xs font-bold flex items-center gap-3 animate-bounce max-w-[90vw]">
+          <Zap className="w-4 h-4 text-yellow-300 animate-spin shrink-0" />
+          <span className="truncate">{activeBanner ? activeBanner.text : '⚡ PROCESANDO COMANDO EN EL SISTEMA...'}</span>
+        </div>
+      )}
       
       {/* 1. TOP HEADER (Logo, App Name, Status Badge, Notifications & Profile) */}
       <header className="bg-[#101426]/90 border border-cyan-500/15 rounded-2xl p-4 shadow-2xl backdrop-blur-md flex items-center justify-between gap-4">
@@ -617,17 +649,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 const appName = app.name || 'App';
                 const cmd = app.cmd || `Abrir ${appName}`;
                 const color = app.color || 'bg-cyan-600';
+                const isClicked = clickingApp === appName || clickingApp === cmd;
                 return (
                   <button
                     key={idx}
-                    onClick={() => onTestCommand(cmd)}
-                    className="flex flex-col items-center text-center gap-1.5 group cursor-pointer"
+                    onClick={() => triggerAppAction(cmd, appName)}
+                    className="flex flex-col items-center text-center gap-1.5 group cursor-pointer relative"
                   >
-                    <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
-                      {app.icon || <Grid className="w-5 h-5 text-white" />}
+                    <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform ${
+                      isClicked ? 'ring-4 ring-cyan-300 scale-110 animate-pulse shadow-[0_0_20px_#00f2ff]' : ''
+                    }`}>
+                      {isClicked ? <Zap className="w-6 h-6 text-yellow-300 animate-spin" /> : (app.icon || <Grid className="w-5 h-5 text-white" />)}
                     </div>
-                    <span className="text-[10px] font-sans font-semibold text-gray-300 group-hover:text-white transition-colors truncate w-full">
-                      {appName}
+                    <span className={`text-[10px] font-sans font-semibold transition-colors truncate w-full ${
+                      isClicked ? 'text-cyan-300 font-bold' : 'text-gray-300 group-hover:text-white'
+                    }`}>
+                      {isClicked ? 'Ejecutando...' : appName}
                     </span>
                   </button>
                 );
@@ -836,9 +873,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     onClick={() => {
                       setShowAllAppsModal(false);
                       setAppSearchQuery('');
-                      onTestCommand(`Abrir ${app.name}`);
+                      triggerAppAction(`Abrir ${app.name}`, app.name);
                     }}
-                    className="p-2.5 bg-[#0a0c1b] border border-cyan-500/10 hover:border-cyan-400/40 rounded-xl text-left flex items-center gap-2.5 transition-all group"
+                    className="p-2.5 bg-[#0a0c1b] border border-cyan-500/10 hover:border-cyan-400/40 rounded-xl text-left flex items-center gap-2.5 transition-all group cursor-pointer"
                   >
                     <div className="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-300 shrink-0">
                       <Grid className="w-4 h-4" />
