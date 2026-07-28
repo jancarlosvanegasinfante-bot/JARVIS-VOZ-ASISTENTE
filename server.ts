@@ -137,6 +137,21 @@ Devuelve un objeto JSON estricto con:
         const parsed = JSON.parse(jsonText);
         const duration = Date.now() - startTime;
 
+        // Enrich open_app with exact packageName from installedApps
+        if (parsed && parsed.action === 'open_app' && Array.isArray(installedApps)) {
+          const target = (parsed.params?.appName || '').toLowerCase().trim();
+          if (target) {
+            const found = installedApps.find((a: any) => {
+              const name = (typeof a === 'string' ? a : a.name || '').toLowerCase();
+              const pkg = (typeof a === 'string' ? '' : a.packageName || '').toLowerCase();
+              return name.includes(target) || target.includes(name) || pkg.includes(target);
+            });
+            if (found && typeof found !== 'string' && found.packageName) {
+              parsed.params.packageName = found.packageName;
+            }
+          }
+        }
+
         res.json({
           intent: parsed,
           latencyMs: duration,
@@ -151,7 +166,7 @@ Devuelve un objeto JSON estricto con:
     // Fallback determinista ultra-inteligente (procesamiento local sin conexión)
     const textLower = transcript.toLowerCase();
     let action = 'search_web';
-    let params: Record<string, string> = {};
+    let params: Record<string, any> = {};
     let feedbackText = 'Buscando en Google...';
     let explanation = 'Búsqueda web por defecto';
 
@@ -306,6 +321,18 @@ Devuelve un objeto JSON estricto con:
       action = 'open_app';
       const appName = transcript.replace(/.*(abre|abrir)\s*/i, '').trim();
       params = { appName: appName || 'App' };
+      if (Array.isArray(installedApps)) {
+        const target = appName.toLowerCase().trim();
+        const found = installedApps.find((a: any) => {
+          const name = (typeof a === 'string' ? a : a.name || '').toLowerCase();
+          const pkg = (typeof a === 'string' ? '' : a.packageName || '').toLowerCase();
+          return name.includes(target) || target.includes(name) || pkg.includes(target);
+        });
+        if (found && typeof found !== 'string' && found.packageName) {
+          params.packageName = found.packageName;
+          if (found.name) params.appName = found.name;
+        }
+      }
       feedbackText = `Abriendo ${params.appName}...`;
       explanation = `Apertura de app ${params.appName}`;
     } else {

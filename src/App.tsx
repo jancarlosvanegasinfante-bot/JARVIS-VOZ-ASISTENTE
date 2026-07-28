@@ -25,6 +25,10 @@ declare global {
     };
     updateAndroidContacts?: (contactsJson: string) => void;
     updateAndroidApps?: (appsJson: string) => void;
+    onNativeTranscript?: (text: string) => void;
+    onNativePartialTranscript?: (text: string) => void;
+    onNativeListeningState?: (isListening: boolean) => void;
+    onNativeError?: (error: string) => void;
   }
 }
 
@@ -93,6 +97,12 @@ export default function App() {
 
   // SpeechRecognition Web API Ref
   const recognitionRef = useRef<any>(null);
+  const handleProcessCommandRef = useRef<((cmd: string) => void) | null>(null);
+
+  // Keep handleProcessCommandRef updated on every render
+  useEffect(() => {
+    handleProcessCommandRef.current = handleProcessCommand;
+  });
 
   // Automatic live sync with real Android hardware
   useEffect(() => {
@@ -207,6 +217,31 @@ export default function App() {
       } catch (err) {
         console.error("Error en updateAndroidApps push:", err);
       }
+    };
+
+    // Native Speech Recognition Receivers from Android App
+    (window as any).onNativeTranscript = (text: string) => {
+      console.log("⚡ [Native Speech] Transcript recibido:", text);
+      setTranscript(text);
+      setIsListening(false);
+      if (text && text.trim() && handleProcessCommandRef.current) {
+        handleProcessCommandRef.current(text.trim());
+      }
+    };
+
+    (window as any).onNativePartialTranscript = (text: string) => {
+      console.log("⚡ [Native Speech] Parcial:", text);
+      setTranscript(text);
+    };
+
+    (window as any).onNativeListeningState = (listening: boolean) => {
+      console.log("⚡ [Native Speech] Estado escuchando:", listening);
+      setIsListening(listening);
+    };
+
+    (window as any).onNativeError = (err: string) => {
+      console.warn("⚡ [Native Speech] Error de voz nativa:", err);
+      setIsListening(false);
     };
 
     return () => clearInterval(syncInterval);

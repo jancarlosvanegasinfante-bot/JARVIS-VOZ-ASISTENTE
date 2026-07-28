@@ -80,6 +80,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [notificationsCount, setNotificationsCount] = useState(3);
   const [showAllAppsModal, setShowAllAppsModal] = useState(false);
+  const [appSearchQuery, setAppSearchQuery] = useState('');
 
   // Handle Command Submission
   const handleManualSubmit = (e: React.FormEvent) => {
@@ -610,22 +611,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
             </div>
 
-            {/* Grid of 8 app shortcut icons matching Image 2 */}
+            {/* Grid of 8 app shortcut icons */}
             <div className="grid grid-cols-4 gap-3 pt-1">
-              {systemAppIcons.map((app, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => onTestCommand(app.cmd)}
-                  className="flex flex-col items-center text-center gap-1.5 group cursor-pointer"
-                >
-                  <div className={`w-12 h-12 rounded-2xl ${app.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
-                    {app.icon}
-                  </div>
-                  <span className="text-[10px] font-sans font-semibold text-gray-300 group-hover:text-white transition-colors truncate w-full">
-                    {app.name}
-                  </span>
-                </button>
-              ))}
+              {(installedApps.length > 0 ? installedApps.slice(0, 8) : systemAppIcons).map((app, idx) => {
+                const appName = app.name || 'App';
+                const cmd = app.cmd || `Abrir ${appName}`;
+                const color = app.color || 'bg-cyan-600';
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => onTestCommand(cmd)}
+                    className="flex flex-col items-center text-center gap-1.5 group cursor-pointer"
+                  >
+                    <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
+                      {app.icon || <Grid className="w-5 h-5 text-white" />}
+                    </div>
+                    <span className="text-[10px] font-sans font-semibold text-gray-300 group-hover:text-white transition-colors truncate w-full">
+                      {appName}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             <button
@@ -633,7 +639,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               className="w-full py-2 bg-[#0a0c1b] hover:bg-cyan-500/10 border border-cyan-500/20 hover:border-cyan-400/40 text-cyan-400 font-mono text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
             >
               <Grid className="w-3.5 h-3.5" />
-              <span>VER TODAS (12)</span>
+              <span>VER TODAS ({installedApps.length || 12})</span>
             </button>
           </div>
 
@@ -793,35 +799,63 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 Todas las Aplicaciones ({installedApps.length})
               </h3>
               <button
-                onClick={() => setShowAllAppsModal(false)}
+                onClick={() => {
+                  setShowAllAppsModal(false);
+                  setAppSearchQuery('');
+                }}
                 className="text-gray-400 hover:text-white text-xs font-mono"
               >
                 Cerrar
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
-              {installedApps.map((app, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => {
-                    setShowAllAppsModal(false);
-                    onTestCommand(`Abrir ${app.name}`);
-                  }}
-                  className="p-2.5 bg-[#0a0c1b] border border-cyan-500/10 hover:border-cyan-400/40 rounded-xl text-left flex items-center gap-2.5 transition-all group"
-                >
-                  <div className="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-300 shrink-0">
-                    <Grid className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-white truncate">{app.name}</p>
-                    <p className="text-[9px] font-mono text-gray-500 truncate">{app.packageName}</p>
-                  </div>
-                </button>
-              ))}
+
+            {/* Search Input */}
+            <div className="relative">
+              <input
+                type="text"
+                value={appSearchQuery}
+                onChange={(e) => setAppSearchQuery(e.target.value)}
+                placeholder="Buscar aplicación..."
+                className="w-full bg-[#0a0c1b] border border-cyan-500/20 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 font-mono"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+              {installedApps
+                .filter((app) => {
+                  const q = appSearchQuery.toLowerCase().trim();
+                  if (!q) return true;
+                  return (
+                    (app.name || '').toLowerCase().includes(q) ||
+                    (app.packageName || '').toLowerCase().includes(q)
+                  );
+                })
+                .map((app, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setShowAllAppsModal(false);
+                      setAppSearchQuery('');
+                      onTestCommand(`Abrir ${app.name}`);
+                    }}
+                    className="p-2.5 bg-[#0a0c1b] border border-cyan-500/10 hover:border-cyan-400/40 rounded-xl text-left flex items-center gap-2.5 transition-all group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-300 shrink-0">
+                      <Grid className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-white truncate">{app.name}</p>
+                      <p className="text-[9px] font-mono text-gray-500 truncate">{app.packageName}</p>
+                    </div>
+                  </button>
+                ))}
             </div>
             <button
-              onClick={() => setShowAllAppsModal(false)}
-              className="w-full py-2 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold rounded-xl transition-colors"
+              onClick={() => {
+                setShowAllAppsModal(false);
+                setAppSearchQuery('');
+              }}
+              className="w-full py-2 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold rounded-xl transition-colors cursor-pointer"
             >
               Cerrar
             </button>
