@@ -346,9 +346,10 @@ export default function App() {
     }
   };
 
-  // Browser-level Action Execution fallback
+  // Browser-level Action Execution fallback & WEB execution
   const executeRealBrowserAction = (intent: IntentResult) => {
     const { action, params } = intent;
+
     if (action === 'send_whatsapp') {
       const matchedContact = contacts.find(
         (c) =>
@@ -363,6 +364,16 @@ export default function App() {
       } else {
         window.open(`https://wa.me/?text=${encodedMsg}`, '_blank');
       }
+    } else if (action === 'send_sms') {
+      const matchedContact = contacts.find(
+        (c) =>
+          c.name.toLowerCase().includes((params.contact || '').toLowerCase()) ||
+          (c.nickname && c.nickname.toLowerCase().includes((params.contact || '').toLowerCase()))
+      );
+      const rawPhone = params.phoneNumber || (matchedContact ? matchedContact.phone : '');
+      const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+      const encodedMsg = encodeURIComponent(params.message || 'Hola');
+      window.open(`sms:${cleanPhone}?body=${encodedMsg}`, '_self');
     } else if (action === 'make_call') {
       const matchedContact = contacts.find(
         (c) =>
@@ -373,19 +384,40 @@ export default function App() {
       const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
       if (cleanPhone) {
         window.open(`tel:${cleanPhone}`, '_self');
+      } else {
+        window.open('tel:', '_self');
       }
+    } else if (action === 'play_youtube') {
+      const query = encodeURIComponent(params.query || params.track || 'musica');
+      window.open(`https://www.youtube.com/results?search_query=${query}`, '_blank');
+    } else if (action === 'play_spotify') {
+      const track = encodeURIComponent(params.track || 'musica');
+      window.open(`https://open.spotify.com/search/${track}`, '_blank');
     } else if (action === 'open_app') {
       const appName = (params.appName || '').toLowerCase();
       if (appName.includes('spotify')) {
         window.open('https://open.spotify.com', '_blank');
       } else if (appName.includes('youtube')) {
         window.open('https://youtube.com', '_blank');
-      } else if (appName.includes('chrome') || appName.includes('browser')) {
+      } else if (appName.includes('whatsapp')) {
+        window.open('https://web.whatsapp.com', '_blank');
+      } else if (appName.includes('chrome') || appName.includes('browser') || appName.includes('navegador')) {
         window.open('https://google.com', '_blank');
+      } else if (appName.includes('map') || appName.includes('gps')) {
+        window.open('https://maps.google.com', '_blank');
+      } else if (appName.includes('camara') || appName.includes('cámara') || appName.includes('foto')) {
+        window.open('https://camera.google.com', '_blank');
+      } else {
+        window.open(`https://www.google.com/search?q=${encodeURIComponent(params.appName || 'app')}`, '_blank');
       }
-    } else if (action === 'search_web') {
+    } else if (action === 'search_web' || action === 'general_query') {
       const query = encodeURIComponent(params.query || params.content || 'Jarvis Voice');
       window.open(`https://www.google.com/search?q=${query}`, '_blank');
+    } else if (action === 'set_reminder') {
+      const title = encodeURIComponent(params.title || 'Recordatorio Jarvis');
+      window.open(`https://calendar.google.com/calendar/u/0/r/eventedit?text=${title}`, '_blank');
+    } else if (action === 'take_photo' || action === 'open_camera') {
+      window.open('https://camera.google.com', '_blank');
     }
   };
 
@@ -422,7 +454,16 @@ export default function App() {
 
         // Ejecutar acción DE VERDAD en el celular (vía Bridge o Browser)
         if (typeof window !== 'undefined' && window.AndroidBridge) {
-          window.AndroidBridge.executeAction(JSON.stringify(intent));
+          try {
+            if (typeof window.AndroidBridge.executeAction === 'function') {
+              window.AndroidBridge.executeAction(JSON.stringify(intent));
+            } else {
+              executeRealBrowserAction(intent);
+            }
+          } catch (e) {
+            console.warn("Native executeAction error, using browser fallback:", e);
+            executeRealBrowserAction(intent);
+          }
         } else {
           executeRealBrowserAction(intent);
         }

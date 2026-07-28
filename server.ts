@@ -28,7 +28,7 @@ async function startServer() {
   });
 
   // API Endpoint: Jarvis Intent Extractor Engine
-  app.post('/api/parse-intent', async (req, res) => {
+  app.post(['/api/intent', '/api/parse-intent', '/api/process-command'], async (req, res) => {
     const startTime = Date.now();
     const { transcript, contacts = [], installedApps = [] } = req.body;
 

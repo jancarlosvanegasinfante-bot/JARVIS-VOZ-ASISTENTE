@@ -3,6 +3,8 @@ export type ActionType =
   | 'make_call'
   | 'send_sms'
   | 'set_reminder'
+  | 'play_youtube'
+  | 'play_spotify'
   | 'open_app'
   | 'search_web'
   | 'read_notifications'
