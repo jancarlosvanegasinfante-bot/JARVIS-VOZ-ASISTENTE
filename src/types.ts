@@ -9,7 +9,14 @@ export type ActionType =
   | 'dictate_note'
   | 'control_music'
   | 'janbot_query'
-  | 'general_query';
+  | 'general_query'
+  | 'take_photo'
+  | 'open_camera'
+  | 'toggle_flashlight'
+  | 'toggle_wifi'
+  | 'toggle_bluetooth'
+  | 'airplane_mode'
+  | 'set_brightness';
 
 export interface ActionParams {
   contact?: string;
@@ -21,6 +28,7 @@ export interface ActionParams {
   time?: string;
   appName?: string;
   query?: string;
+  level?: number;
   command?: 'play' | 'pause' | 'next' | 'prev' | 'volume_up' | 'volume_down';
   track?: string;
   queryType?: 'sales' | 'inventory' | 'leads' | 'ads';

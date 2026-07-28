@@ -60,8 +60,15 @@ Acciones permitidas y sus parámetros:
 12. "close_app": Cerrar la aplicación actual o volver a la pantalla de inicio. params: {}
 13. "search_web": Buscar información en Google / Web. params: { "query": string }
 14. "control_music": Controlar reproducción multimedia. params: { "command": "play"|"pause"|"next"|"prev"|"volume_up"|"volume_down", "track": string }
-15. "general_query": Úsala para CUALQUIER pregunta que no encaje en las acciones de arriba — dudas generales sobre el celular ("¿cómo bajo el brillo?", "¿qué es el modo avión?", "¿cómo libero espacio?"), preguntas de cultura general, cálculos, curiosidades, o cualquier cosa que el usuario simplemente quiera que le respondas hablando, sin ejecutar ninguna acción real. params: { "query": string (la pregunta tal cual la hizo el usuario) }
+15. "general_query": Úsala para CUALQUIER pregunta que no encaje en las acciones de arriba — dudas generales sobre el celular ("¿cómo libero espacio?", "¿qué es el modo desarrollador?"), preguntas de cultura general, cálculos, curiosidades, o cualquier cosa que el usuario simplemente quiera que le respondas hablando, sin ejecutar ninguna acción real. params: { "query": string (la pregunta tal cual la hizo el usuario) }
     Para esta acción en particular, actúa como un experto genuino en Android y smartphones: da instrucciones claras y precisas (ej. la ruta exacta en Ajustes cuando aplique), y para preguntas generales responde con la mejor información que tengas. El "feedbackText" en este caso debe ser la respuesta completa y útil (no solo una confirmación corta como en las otras acciones) — hablada de forma natural, como si un experto te la explicara por voz.
+16. "take_photo": Tomar una foto ahora mismo ("tómame una foto", "saca una foto"). params: {}
+17. "open_camera": Solo abrir la cámara, sin tomar foto todavía ("abre la cámara"). params: {}
+18. "toggle_flashlight": Encender o apagar la linterna ("prende la linterna", "apaga la luz", "enciende el flash"). params: {}
+19. "toggle_wifi": Abrir el panel rápido de WiFi para activarlo/desactivarlo ("activa el wifi", "apaga el wifi", "conéctate al wifi"). params: {}
+20. "toggle_bluetooth": Abrir los ajustes de Bluetooth ("prende el bluetooth", "activa el bluetooth"). params: {}
+21. "airplane_mode": Abrir los ajustes de modo avión ("activa el modo avión", "pon modo avión"). params: {}
+22. "set_brightness": Ajustar el brillo de la pantalla a un porcentaje ("pon el brillo al 50%", "sube el brillo", "brillo al máximo" = 100, "brillo al mínimo" = 5, "baja el brillo" sin número específico = reduce ~20 puntos del nivel típico 50). params: { "level": number (1-100) }
 
 Contactos conocidos del usuario: ${JSON.stringify(contacts.map((c: any) => c.name || c.nickname || ''))}
 Apps instaladas conocidas: ${JSON.stringify(installedApps.map((a: any) => typeof a === 'string' ? a : a.name || ''))}
@@ -255,6 +262,42 @@ Devuelve un objeto JSON estricto con:
       params = { contact: cName, phoneNumber: rawPhone };
       feedbackText = `Iniciando llamada a ${rawPhone || cName}...`;
       explanation = `Llamada telefónica a ${rawPhone || cName}`;
+    } else if (textLower.includes('foto') || textLower.includes('toma una foto') || textLower.includes('saca una foto')) {
+      action = 'take_photo';
+      feedbackText = 'Abriendo cámara para la foto...';
+      explanation = 'Captura de foto';
+    } else if (textLower.includes('cámara') || textLower.includes('camara')) {
+      action = 'open_camera';
+      feedbackText = 'Abriendo cámara...';
+      explanation = 'Apertura de cámara';
+    } else if (textLower.includes('linterna') || textLower.includes('flash') || textLower.includes('la luz')) {
+      action = 'toggle_flashlight';
+      feedbackText = 'Cambiando la linterna...';
+      explanation = 'Control de linterna';
+    } else if (textLower.includes('wifi') || textLower.includes('wi-fi')) {
+      action = 'toggle_wifi';
+      feedbackText = 'Abriendo el panel de WiFi...';
+      explanation = 'Control de WiFi';
+    } else if (textLower.includes('bluetooth')) {
+      action = 'toggle_bluetooth';
+      feedbackText = 'Abriendo Bluetooth...';
+      explanation = 'Control de Bluetooth';
+    } else if (textLower.includes('modo avión') || textLower.includes('modo avion')) {
+      action = 'airplane_mode';
+      feedbackText = 'Abriendo modo avión...';
+      explanation = 'Control de modo avión';
+    } else if (textLower.includes('brillo')) {
+      action = 'set_brightness';
+      let level = 50;
+      if (textLower.includes('máximo') || textLower.includes('maximo') || textLower.includes('full')) level = 100;
+      else if (textLower.includes('mínimo') || textLower.includes('minimo')) level = 5;
+      else {
+        const numMatch = textLower.match(/(\d{1,3})\s*(%|por ciento)?/);
+        if (numMatch) level = parseInt(numMatch[1], 10);
+      }
+      params = { level };
+      feedbackText = `Ajustando el brillo al ${level}%...`;
+      explanation = 'Ajuste de brillo de pantalla';
     } else if (textLower.includes('cierra') || textLower.includes('cerrar') || textLower.includes('inicio') || textLower.includes('atrás')) {
       action = 'close_app';
       feedbackText = 'Cerrando aplicación...';
