@@ -449,6 +449,13 @@ export default function App() {
         // Hablar respuesta por voz (TTS)
         if (ttsEnabled) {
           setIsSpeaking(true);
+          if (typeof window !== 'undefined' && window.AndroidBridge?.speak) {
+            try {
+              window.AndroidBridge.speak(intent.feedbackText);
+            } catch (e) {
+              console.warn("Native speak error:", e);
+            }
+          }
           audioEngine.speak(intent.feedbackText, () => setIsSpeaking(false));
         }
 
