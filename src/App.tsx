@@ -455,7 +455,15 @@ export default function App() {
         window.open(`https://www.youtube.com/results?search_query=${query}`, '_blank');
       } else if (action === 'play_spotify') {
         const track = encodeURIComponent(params.track || 'musica');
-        window.open(`https://open.spotify.com/search/${track}`, '_blank');
+        if (typeof window !== 'undefined' && (window as any).AndroidBridge?.openSpotify) {
+          try {
+            (window as any).AndroidBridge.openSpotify(params.track || 'musica');
+          } catch (e) {
+            window.open(`https://open.spotify.com/search/${track}`, '_blank');
+          }
+        } else {
+          window.open(`https://open.spotify.com/search/${track}`, '_blank');
+        }
       } else if (action === 'open_app') {
         const appName = (params.appName || '').toLowerCase();
         let pkg = params.packageName;
@@ -502,13 +510,21 @@ export default function App() {
         window.open(`https://www.google.com/search?q=${query}`, '_blank');
       } else if (action === 'set_alarm') {
         let hour = 7, min = 0;
-        if (params.time) {
+        if (typeof params.hours === 'number') {
+          hour = params.hours;
+        } else if (params.time) {
           const parts = params.time.split(':');
           if (parts.length >= 2) {
-            hour = parseInt(parts[0], 10) || 7;
+            hour = parseInt(parts[0], 10);
             min = parseInt(parts[1], 10) || 0;
           }
         }
+        if (typeof params.minutes === 'number') {
+          min = params.minutes;
+        }
+        if (isNaN(hour)) hour = 7;
+        if (isNaN(min)) min = 0;
+
         const title = encodeURIComponent(params.title || 'Alarma Jarvis');
         window.location.href = `intent://#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR=${hour};i.android.intent.extra.alarm.MINUTES=${min};S.android.intent.extra.alarm.MESSAGE=${title};B.android.intent.extra.alarm.SKIP_UI=false;end`;
         setTimeout(() => {
