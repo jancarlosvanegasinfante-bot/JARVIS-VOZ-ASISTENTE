@@ -91,7 +91,7 @@ Acciones permitidas y sus parámetros:
 18. "close_app": Cerrar la aplicación actual o volver a la pantalla de inicio. params: {}
 19. "search_web": Buscar en la web sólo si dice explícitamente "busca en google" o "busca en la web". params: { "query": string }
 20. "control_music": Controlar reproducción multimedia. params: { "command": "play"|"pause"|"next"|"prev"|"volume_up"|"volume_down", "track": string }
-21. "general_query": Úsala para CUALQUIER pregunta de cultura general, ciencia, historia, cálculos, o consultas ("¿cuántos planetas hay?", "¿por qué el cielo es azul?", "¿quién es el presidente de...?"). CRÍTICO: En "feedbackText" DEBES poner la RESPUESTA COMPLETA Y DIRECTA que Jarvis le hablará al usuario (1-3 frases fluidas en español). ¡NUNCA pongas "Buscando en Google..."! params: { "query": string }
+21. "general_query": Úsala para CUALQUIER pregunta de cultura general, ciencia, historia, cálculos, o consultas ("¿cuántos planetas hay?", "¿por qué el cielo es azul?", "¿quién es el presidente de...?"). CRÍTICO: En "feedbackText" DEBES poner la RESPUESTA COMPLETA Y DIRECTA que Jarvis le hablará al usuario (1-3 frases fluidas en español). ¡NUNCA abras navegador ni pongas "Buscando en Google..."! params: { "query": string }
 22. "take_photo": Tomar una foto ahora mismo ("tómame una foto", "saca una foto"). params: {}
 23. "open_camera": Solo abrir la cámara, sin tomar foto todavía ("abre la cámara"). params: {}
 24. "toggle_flashlight": Encender o apagar la linterna ("prende la linterna", "apaga la luz", "enciende el flash"). params: {}
@@ -100,36 +100,44 @@ Acciones permitidas y sus parámetros:
 27. "airplane_mode": Abrir los ajustes de modo avión ("activa el modo avión", "pon modo avión"). params: {}
 28. "set_brightness": Ajustar el brillo de la pantalla a un porcentaje. params: { "level": number (1-100) }
 
-Contactos conocidos del usuario: ${JSON.stringify(contacts.map((c: any) => c.name || c.nickname || ''))}
+Contactos conocidos del usuario: ${JSON.stringify(contacts.map((c: any) => ({ name: c.name || '', nickname: c.nickname || '', phone: c.phone || '' })))}
 Apps instaladas conocidas: ${JSON.stringify(installedApps.map((a: any) => typeof a === 'string' ? a : a.name || ''))}
 
-REGLAS DE DESAMBIGUACIÓN:
-- Si el usuario dice "abre [nombre_de_app]" (ej. "abre Nequi", "abre Bancolombia", "abre Instagram", "abre Uber", "abre ChatGPT", "abre MercadoLibre", "abre TikTok", "abre Facebook", "abre Gmail", "abre CapCut", "abre Canva", "abre Didi", "abre Rappi", "abre Netflix", etc.) -> DEBES USAR "open_app" con params: { "appName": "[nombre_de_app]" }. NO uses "search_web" ni hagas búsquedas en google si es una aplicación real del teléfono.
-- "pon" / "ponme" es AMBIGUO:
-  - Si menciona "alarma", "despiértame" o una hora para sonar (ej "a las 7", "a las 6:30") -> es "set_alarm".
-  - Si menciona "temporizador", "cuenta regresiva", "timer" o un tiempo ("en 5 minutos") -> es "set_timer".
-  - Si menciona "recordatorio" o "recuérdame" -> es "set_reminder".
-  - Si menciona una canción, artista, género ("pon bachata", "pon reggaeton") -> es "play_spotify" (o "play_youtube").
-- Para "pausa la música", "siguiente canción", "canción anterior", "reproduce" -> es "control_music".
-- Para preguntas ("¿cuántos planetas hay?", "quién descubrió América", "cuánto es 15 por 8") -> es "general_query" y pon la respuesta completa hablada en "feedbackText".
-- Para "calculadora" -> es "open_calculator".
-- Para "fotos", "galería", "imágenes" -> es "open_gallery".
-- Para "contactos", "agenda" -> es "open_contacts".
-- Para números de teléfono dictados por voz (ej "3133615984"): ponlos en "phoneNumber".
+REGLAS DE DESAMBIGUACIÓN Y EXTRACCIÓN:
+- IMPORTANTE PARA ALARMAS ("set_alarm"):
+  - Calcula con precisión "hours" (0 a 23) y "minutes" (0 a 59) en formato militar/24 horas.
+  - "12pm" o "12 del mediodía" -> hours: 12, minutes: 0, time: "12:00".
+  - "12am" o "12 de la noche" -> hours: 0, minutes: 0, time: "00:00".
+  - "12:30 pm" -> hours: 12, minutes: 30, time: "12:30".
+  - "7am" o "7 de la mañana" -> hours: 7, minutes: 0, time: "07:00".
+  - "7pm" o "7 de la noche" -> hours: 19, minutes: 0, time: "19:00".
+  - "feedbackText" DEBE decir exactamente: "Configurando alarma para las [HORA EN FORMATO LEÍBLE CON AM/PM o MEDIODÍA]".
+
+- IMPORTANTE PARA WHATSAPP ("send_whatsapp"):
+  - Busca el contacto en "Contactos conocidos".
+  - Si el contacto existe en la lista, coloca su nombre en "contact" y su número en "phoneNumber".
+  - Si el contacto no existe en la lista pero el usuario dictó un nombre (ej. "Javier"), pon "Javier" en "contact" y "phoneNumber": "".
+  - En "feedbackText": Si tienes número, pon "Abriendo WhatsApp para enviar mensaje a [Contacto]: [mensaje]". Si no tienes número, pon "Abriendo WhatsApp con tu mensaje '[mensaje]'. Selecciona a [Contacto] en la lista para enviárselo."
+
+- IMPORTANTE PARA SPOTIFY ("play_spotify"):
+  - Extrae el nombre exacto de la canción/artista en "track" sin cortar palabras (ej. "ultimo deseo" -> track: "Último Deseo").
+  - "feedbackText": "Reproduciendo '[track]' en Spotify."
+
+- IMPORTANTE PARA PREGUNTAS GENERALES ("general_query"):
+  - Responde de forma directa y clara. En "feedbackText" coloca la respuesta que Jarvis le hablará al usuario.
+  - ¡JAMÁS mandes las preguntas generales a búsqueda web en navegador!
 
 Ejemplos:
-- "¿cuántos planetas hay en el sistema solar?" -> action: "general_query", params: { "query": "¿cuántos planetas hay en el sistema solar?" }, feedbackText: "El sistema solar consta de ocho planetas principales, siendo Neptuno el más lejano y Mercurio el más cercano al Sol."
-- "pausa la música" -> action: "control_music", params: { "command": "pause" }, feedbackText: "Pausando la música."
-- "siguiente canción" -> action: "control_music", params: { "command": "next" }, feedbackText: "Siguiente canción."
-- "abre Nequi" -> action: "open_app", params: { "appName": "Nequi" }
-- "ponme una alarma a las 7 de la mañana" -> action: "set_alarm", params: { "time": "07:00", "title": "Alarma", "hours": 7, "minutes": 0 }
-- "pon un temporizador de 5 minutos" -> action: "set_timer", params: { "minutes": 5, "seconds": 300, "title": "Temporizador" }
+- "ponme una alarma a las 12pm de hoy" -> action: "set_alarm", params: { "time": "12:00", "title": "Alarma mediodía", "hours": 12, "minutes": 0 }, feedbackText: "Configurando alarma para las 12:00 PM del mediodía."
+- "ponme en spotify la canción ultimo deseo" -> action: "play_spotify", params: { "track": "Último Deseo" }, feedbackText: "Reproduciendo 'Último Deseo' en Spotify."
+- "enviale un mensaje por whatsapp a javier diciendole hola como estas" -> action: "send_whatsapp", params: { "contact": "Javier", "phoneNumber": "", "message": "Hola cómo estás" }, feedbackText: "Abriendo WhatsApp con el mensaje 'Hola cómo estás'. Selecciona a Javier en tus contactos para enviárselo."
+- "¿cuántos planetas hay en el sistema solar?" -> action: "general_query", params: { "query": "¿cuántos planetas hay en el sistema solar?" }, feedbackText: "El sistema solar consta de ocho planetas principales, siendo Mercurio el más cercano al Sol y Neptuno el más lejano."
 
 Devuelve un objeto JSON estricto con:
 {
-  "action": string (una de las acciones permitidas),
-  "params": object (parámetros requeridos),
-  "confidence": number (entre 0.85 y 1.0),
+  "action": string,
+  "params": object,
+  "confidence": number,
   "explanation": string,
   "feedbackText": string
 }
@@ -220,39 +228,62 @@ Devuelve un objeto JSON estricto con:
     // Extracción de Alarma
     const extractAlarmDetails = (text: string) => {
       const textL = text.toLowerCase();
-      let time = '07:00';
-      const timeRegex = /(\d{1,2})[:h](\d{2})?\s*(am|pm)?/i;
-      const match = textL.match(timeRegex);
-      if (match) {
-        let hour = parseInt(match[1], 10);
-        let min = match[2] ? parseInt(match[2], 10) : 0;
-        if (textL.includes('pm') || textL.includes('tarde') || textL.includes('noche')) {
-          if (hour < 12) hour += 12;
+      let hour = 7;
+      let min = 0;
+
+      if (textL.includes('12 pm') || textL.includes('12:00 pm') || textL.includes('12 del mediodía') || textL.includes('12 del mediodia') || textL.includes('12 de la tarde')) {
+        hour = 12;
+        min = 0;
+      } else if (textL.includes('12 am') || textL.includes('12:00 am') || textL.includes('12 de la noche') || textL.includes('12 de la madrugada') || textL.includes('12 medianoche')) {
+        hour = 0;
+        min = 0;
+      } else {
+        const timeRegex = /(\d{1,2})[:h](\d{2})?\s*(am|pm)?/i;
+        const match = textL.match(timeRegex);
+        if (match) {
+          hour = parseInt(match[1], 10);
+          min = match[2] ? parseInt(match[2], 10) : 0;
+          const isPm = textL.includes('pm') || textL.includes('tarde') || textL.includes('noche');
+          const isAm = textL.includes('am') || textL.includes('mañana') || textL.includes('madrugada');
+          if (isPm && hour < 12) hour += 12;
+          else if (isAm && hour === 12) hour = 0;
+        } else {
+          const numMatch = textL.match(/a las?\s*(\d{1,2})/);
+          if (numMatch) {
+            hour = parseInt(numMatch[1], 10);
+            if ((textL.includes('tarde') || textL.includes('noche') || textL.includes('pm')) && hour < 12) hour += 12;
+          }
         }
-        time = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
       }
-      return { time, title: 'Alarma de Jarvis', feedbackText: `Alarma configurada para las ${time}.` };
+
+      const time = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+      const label = hour === 0 ? '12:00 AM (medianoche)' : hour === 12 ? '12:00 PM (mediodía)' : hour > 12 ? `${hour - 12}:${min.toString().padStart(2, '0')} PM` : `${hour}:${min.toString().padStart(2, '0')} AM`;
+      return { hours: hour, minutes: min, time, title: 'Alarma de Jarvis', feedbackText: `Configurando alarma para las ${label}.` };
     };
 
     // Extracción de Contacto
     const extractContact = (text: string) => {
       const textL = text.toLowerCase();
-      let contactName = 'Contacto';
       for (const c of contacts) {
         const name = (typeof c === 'string' ? c : c.name || c.nickname || '').toLowerCase();
         if (name && textL.includes(name)) {
-          contactName = c.name || c.nickname || name;
-          break;
+          return c;
         }
       }
-      if (contactName === 'Contacto') {
-        if (textL.includes('mamá') || textL.includes('mama')) contactName = 'Mamá';
-        else if (textL.includes('papá') || textL.includes('papa')) contactName = 'Papá';
-        else if (textL.includes('carlos')) contactName = 'Carlos';
-        else if (textL.includes('maria') || textL.includes('maría')) contactName = 'María';
-        else if (textL.includes('juan')) contactName = 'Juan';
+      // Chequear nombres dictados comunes
+      if (textL.includes('javier')) return { name: 'Javier', phone: '' };
+      if (textL.includes('juan')) return { name: 'Juan', phone: '' };
+      if (textL.includes('carlos')) return { name: 'Carlos', phone: '' };
+      if (textL.includes('mamá') || textL.includes('mama')) return { name: 'Mamá', phone: '' };
+      if (textL.includes('papá') || textL.includes('papa')) return { name: 'Papá', phone: '' };
+      if (textL.includes('maria') || textL.includes('maría')) return { name: 'María', phone: '' };
+
+      // Intentar extraer después de "a " o "para "
+      const match = textL.match(/(?:a|para|con)\s+([a-záéíóúñ]+)/i);
+      if (match && match[1] && !['whatsapp', 'mensaje', 'un', 'el', 'la'].includes(match[1])) {
+        return { name: match[1].charAt(0).toUpperCase() + match[1].slice(1), phone: '' };
       }
-      return contactName;
+      return { name: '', phone: '' };
     };
 
     // Ruteo de reglas para intenciones
@@ -277,13 +308,13 @@ Devuelve un objeto JSON estricto con:
     } else if (textLower.includes('alarma') || textLower.includes('despiértame') || textLower.includes('despierta')) {
       action = 'set_alarm';
       const details = extractAlarmDetails(transcript);
-      params = { title: details.title, time: details.time };
-      feedbackText = `Configurando alarma a las ${details.time}...`;
+      params = { title: details.title, time: details.time, hours: details.hours, minutes: details.minutes };
+      feedbackText = details.feedbackText;
       explanation = 'Configuración de alarma nativa';
     } else if (textLower.includes('temporizador') || textLower.includes('cuenta regresiva') || textLower.includes('timer')) {
       action = 'set_timer';
       params = { minutes: 5, seconds: 300, title: 'Temporizador' };
-      feedbackText = 'Configurando temporizador...';
+      feedbackText = 'Configurando temporizador de 5 minutos.';
       explanation = 'Configuración de temporizador';
     } else if (textLower.includes('recordatorio') || textLower.includes('recuérdame') || textLower.includes('recuerdame')) {
       action = 'set_reminder';
@@ -309,57 +340,72 @@ Devuelve un objeto JSON estricto con:
       explanation = 'Apertura de calendario';
     } else if (textLower.includes('youtube') || textLower.includes('video') || textLower.includes('pon en youtube')) {
       action = 'play_youtube';
-      const q = transcript.replace(/.*(youtube|pon|video|busca en youtube)\s*/i, '').trim();
+      const q = transcript.replace(/^.*?\b(youtube|pon|video|busca en youtube)\b/i, '').trim();
       params = { query: q || transcript };
       feedbackText = `Buscando en YouTube: "${params.query}"`;
       explanation = 'Reproducción de audio/video en YouTube';
     } else if (textLower.includes('spotify') || textLower.includes('música') || textLower.includes('musica') || textLower.includes('canción') || textLower.includes('cancion') || textLower.includes('reggaeton') || textLower.includes('rola')) {
       action = 'play_spotify';
-      const trk = transcript.replace(/.*(spotify|ponme|pon|música|musica|canción|cancion|la canción de|de)\s*/i, '').trim();
-      params = { track: trk || transcript };
-      feedbackText = `Reproduciendo en Spotify: "${params.track}"`;
+      let trk = transcript
+        .replace(/^.*?\b(ponme|pon|reproduce|escuchar|escucha|reproducir)\b/i, '')
+        .replace(/\b(en spotify|en spoti|por spotify)\b/i, '')
+        .replace(/^.*?\b(la canción|canción|cancion|el tema|la rola|música|musica)\b\s*(de)?/i, '')
+        .trim();
+      if (!trk) trk = transcript;
+      params = { track: trk };
+      feedbackText = `Reproduciendo "${params.track}" en Spotify.`;
       explanation = 'Reproducción multimedia en Spotify';
     } else if (textLower.includes('sms') || textLower.includes('mensaje de texto')) {
       action = 'send_sms';
-      const cName = extractContact(transcript);
-      const msg = transcript.replace(/.*(diciendo|que)\s*/i, '').trim();
-      params = { contact: cName, message: msg };
-      feedbackText = `Enviando SMS a ${cName}...`;
+      const contactObj = extractContact(transcript);
+      const msg = transcript.replace(/^.*?\b(diciendo|que|decirle)\b/i, '').trim();
+      params = { contact: contactObj.name, phoneNumber: contactObj.phone, message: msg || 'Hola' };
+      feedbackText = contactObj.name ? `Enviando SMS a ${contactObj.name}...` : 'Enviando SMS...';
       explanation = 'Envío de SMS nativo';
     } else if (textLower.includes('whatsapp') || textLower.includes('escríbele a') || textLower.includes('mensaje a')) {
       action = 'send_whatsapp';
       const rawPhone = extractPhoneNumber(transcript);
-      const cName = rawPhone ? '' : extractContact(transcript);
-      const msg = transcript.replace(/.*(diciendo|que)\s*/i, '').trim();
-      params = { contact: cName, phoneNumber: rawPhone, message: msg };
-      feedbackText = `Abriendo WhatsApp para enviarle a ${rawPhone || cName}: "${params.message}"`;
-      explanation = `Envío de WhatsApp a ${rawPhone || cName}`;
+      const contactObj = extractContact(transcript);
+      const msg = transcript.replace(/^.*?\b(diciendo|que|decirle)\b/i, '').trim() || 'Hola';
+      const cName = contactObj.name || (rawPhone ? '' : 'Contacto');
+      const cPhone = rawPhone || contactObj.phone || '';
+      params = { contact: cName, phoneNumber: cPhone, message: msg };
+      
+      if (cPhone) {
+        feedbackText = `Abriendo WhatsApp para enviar mensaje a ${cName || cPhone}: "${msg}".`;
+      } else if (cName && cName !== 'Contacto') {
+        feedbackText = `Abriendo WhatsApp con tu mensaje "${msg}". Selecciona a ${cName} en tu lista de chats para enviárselo.`;
+      } else {
+        feedbackText = `Abriendo WhatsApp con tu mensaje "${msg}".`;
+      }
+      explanation = `Envío de WhatsApp a ${cName || cPhone || 'Contacto'}`;
     } else if (textLower.includes('llama') || textLower.includes('llamar') || textLower.includes('marcar')) {
       action = 'make_call';
       const rawPhone = extractPhoneNumber(transcript);
-      const cName = rawPhone ? '' : extractContact(transcript);
-      params = { contact: cName, phoneNumber: rawPhone };
-      feedbackText = `Iniciando llamada a ${rawPhone || cName}...`;
-      explanation = `Llamada telefónica a ${rawPhone || cName}`;
+      const contactObj = extractContact(transcript);
+      const cName = contactObj.name || 'Contacto';
+      params = { contact: cName, phoneNumber: rawPhone || contactObj.phone || '' };
+      feedbackText = `Iniciando llamada a ${cName || rawPhone}...`;
+      explanation = `Llamada telefónica a ${cName || rawPhone}`;
     } else if (textLower.includes('foto') || textLower.includes('toma una foto') || textLower.includes('saca una foto')) {
       action = 'take_photo';
-      feedbackText = 'Abriendo cámara para la foto...';
+      feedbackText = 'Abriendo cámara para tomar foto...';
       explanation = 'Captura de foto';
     } else if (textLower.includes('cámara') || textLower.includes('camara')) {
       action = 'open_camera';
-      feedbackText = 'Abriendo cámara...';
+      feedbackText = 'Abriendo la cámara...';
       explanation = 'Apertura de cámara';
     } else if (textLower.includes('linterna') || textLower.includes('flash') || textLower.includes('la luz')) {
       action = 'toggle_flashlight';
-      feedbackText = 'Cambiando la linterna...';
+      feedbackText = 'Cambiando estado de la linterna...';
       explanation = 'Control de linterna';
     } else if (textLower.includes('wifi') || textLower.includes('wi-fi')) {
       action = 'toggle_wifi';
-      feedbackText = 'Abriendo el panel de WiFi...';
+      feedbackText = 'Abriendo ajustes de WiFi...';
       explanation = 'Control de WiFi';
     } else if (textLower.includes('bluetooth')) {
       action = 'toggle_bluetooth';
-      feedbackText = 'Abriendo Bluetooth...';
+      feedbackText = 'Abriendo ajustes de Bluetooth...';
       explanation = 'Control de Bluetooth';
     } else if (textLower.includes('modo avión') || textLower.includes('modo avion')) {
       action = 'airplane_mode';
@@ -375,7 +421,7 @@ Devuelve un objeto JSON estricto con:
         if (numMatch) level = parseInt(numMatch[1], 10);
       }
       params = { level };
-      feedbackText = `Ajustando el brillo al ${level}%...`;
+      feedbackText = `Ajustando el brillo de pantalla al ${level} por ciento.`;
       explanation = 'Ajuste de brillo de pantalla';
     } else if (textLower.includes('cierra') || textLower.includes('cerrar') || textLower.includes('inicio') || textLower.includes('atrás')) {
       action = 'close_app';
@@ -383,7 +429,7 @@ Devuelve un objeto JSON estricto con:
       explanation = 'Navegación nativa de retorno';
     } else if (textLower.includes('abre') || textLower.includes('abrir')) {
       action = 'open_app';
-      const appName = transcript.replace(/.*(abre|abrir)\s*/i, '').trim();
+      const appName = transcript.replace(/^.*?\b(abre|abrir)\b/i, '').trim();
       params = { appName: appName || 'App' };
       if (Array.isArray(installedApps)) {
         const target = appName.toLowerCase().trim();
@@ -399,11 +445,29 @@ Devuelve un objeto JSON estricto con:
       }
       feedbackText = `Abriendo ${params.appName}...`;
       explanation = `Apertura de app ${params.appName}`;
-    } else {
-      action = 'search_web';
+    } else if (
+      textLower.includes('cuantos') || textLower.includes('cuántos') ||
+      textLower.includes('quien') || textLower.includes('quién') ||
+      textLower.includes('que') || textLower.includes('qué') ||
+      textLower.includes('por que') || textLower.includes('por qué') ||
+      textLower.includes('donde') || textLower.includes('dónde') ||
+      textLower.includes('planetas') || textLower.includes('sistema solar') ||
+      textLower.includes('calcula') || textLower.includes('cuanto es') || textLower.includes('cuánto es') ||
+      textLower.endsWith('?')
+    ) {
+      action = 'general_query';
       params = { query: transcript };
-      feedbackText = `Buscando en Google: "${transcript}"`;
-      explanation = 'Búsqueda web general';
+      if (textLower.includes('planetas') || textLower.includes('sistema solar')) {
+        feedbackText = 'El sistema solar consta de ocho planetas principales: Mercurio, Venus, Tierra, Marte, Júpiter, Saturno, Urano y Neptuno.';
+      } else {
+        feedbackText = `Procesando tu consulta: ${transcript}.`;
+      }
+      explanation = 'Consulta de información hablada por voz';
+    } else {
+      action = 'general_query';
+      params = { query: transcript };
+      feedbackText = `Entendido. Procesando: ${transcript}.`;
+      explanation = 'Respuesta por voz de Jarvis';
     }
 
     const duration = Date.now() - startTime;
