@@ -22,6 +22,10 @@ declare global {
       speak?: (text: string) => void;
       startListening?: () => void;
       stopListening?: () => void;
+      resolveContactPhone?: (name: string) => string;
+      setProactiveMode?: (enabled: boolean) => void;
+      isProactiveModeEnabled?: () => boolean;
+      openSpotify?: (track: string) => void;
     };
     updateAndroidContacts?: (contactsJson: string) => void;
     updateAndroidApps?: (appsJson: string) => void;
@@ -455,15 +459,17 @@ export default function App() {
         window.open(`https://www.youtube.com/results?search_query=${query}`, '_blank');
       } else if (action === 'play_spotify') {
         const track = encodeURIComponent(params.track || 'musica');
-        if (typeof window !== 'undefined' && (window as any).AndroidBridge?.openSpotify) {
-          try {
-            (window as any).AndroidBridge.openSpotify(params.track || 'musica');
-          } catch (e) {
-            window.open(`https://open.spotify.com/search/${track}`, '_blank');
-          }
-        } else {
+        try {
+          // Intent con MEDIA_PLAY_FROM_SEARCH para reproducir directamente en Spotify
+          window.location.href = `intent://search/results?q=${track}#Intent;package=com.spotify.music;action=android.media.action.MEDIA_PLAY_FROM_SEARCH;S.query=${track};S.android.intent.extra.focus=vnd.android.cursor.item/*;end`;
+        } catch (e) {
           window.open(`https://open.spotify.com/search/${track}`, '_blank');
         }
+        setTimeout(() => {
+          if (!document.hidden) {
+            window.open(`https://open.spotify.com/search/${track}`, '_blank');
+          }
+        }, 800);
       } else if (action === 'open_app') {
         const appName = (params.appName || '').toLowerCase();
         let pkg = params.packageName;
@@ -559,13 +565,37 @@ export default function App() {
 
     setIsProcessing(true);
 
+    // Refresh contacts from AndroidBridge dynamically if available
+    let currentContacts = contacts;
+    if (typeof window !== 'undefined' && window.AndroidBridge?.getContacts) {
+      try {
+        const cStr = window.AndroidBridge.getContacts();
+        if (cStr) {
+          const parsed = JSON.parse(cStr);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            currentContacts = parsed.map((c: any, idx: number) => ({
+              id: c.id || `contact-${idx}`,
+              name: c.name || '',
+              nickname: c.nickname || c.name || '',
+              phone: c.phone || '',
+              avatar: c.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(c.name || 'C')}`,
+              hasWhatsapp: c.hasWhatsapp !== undefined ? c.hasWhatsapp : true,
+            }));
+            setContacts(currentContacts);
+          }
+        }
+      } catch (e) {
+        console.warn("Contact dynamic refresh failed:", e);
+      }
+    }
+
     try {
       const response = await fetch('/api/intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           transcript: commandText,
-          contacts,
+          contacts: currentContacts,
           installedApps,
           salesData,
         }),
@@ -576,6 +606,21 @@ export default function App() {
 
       if (data && data.intent) {
         const intent: IntentResult = data.intent;
+
+        // Auto-resolve phone number if empty and contact name provided
+        if ((!intent.params.phoneNumber || intent.params.phoneNumber === '') && intent.params.contact) {
+          if (typeof window !== 'undefined' && window.AndroidBridge?.resolveContactPhone) {
+            try {
+              const resPhone = window.AndroidBridge.resolveContactPhone(intent.params.contact);
+              if (resPhone) {
+                intent.params.phoneNumber = resPhone;
+              }
+            } catch (e) {
+              console.warn("Resolve contact phone failed:", e);
+            }
+          }
+        }
+
         setLastIntent(intent);
 
         // Hablar respuesta por voz (TTS)
@@ -591,80 +636,20 @@ export default function App() {
           audioEngine.speak(intent.feedbackText, () => setIsSpeaking(false));
         }
 
-        let isNativeHandled = false;
-
-        // Ejecutar acción DE VERDAD en el celular (vía Bridge o Browser)
+        // Ejecutar acción DE VERDAD en el celular vía AndroidBridge executeAction
         if (typeof window !== 'undefined' && window.AndroidBridge) {
           const bridge = window.AndroidBridge as any;
           try {
             if (typeof bridge.executeAction === 'function') {
               bridge.executeAction(JSON.stringify(intent));
-              isNativeHandled = true;
-            }
-            // Explicit helper calls
-            if (intent.action === 'general_query') {
-              isNativeHandled = true;
-            } else if (intent.action === 'set_alarm') {
-              if (typeof bridge.setAlarm === 'function') {
-                bridge.setAlarm(intent.params.time || '07:00', intent.params.title || 'Alarma');
-                isNativeHandled = true;
-              }
-            } else if (intent.action === 'set_timer') {
-              if (typeof bridge.setTimer === 'function') {
-                bridge.setTimer(intent.params.seconds || 60, intent.params.title || 'Timer');
-                isNativeHandled = true;
-              }
-            } else if (intent.action === 'open_calculator') {
-              if (typeof bridge.openCalculator === 'function') {
-                bridge.openCalculator();
-                isNativeHandled = true;
-              }
-            } else if (intent.action === 'open_gallery') {
-              if (typeof bridge.openGallery === 'function') {
-                bridge.openGallery();
-                isNativeHandled = true;
-              }
-            } else if (intent.action === 'open_contacts') {
-              if (typeof bridge.openContacts === 'function') {
-                bridge.openContacts();
-                isNativeHandled = true;
-              }
-            } else if (intent.action === 'open_calendar') {
-              if (typeof bridge.openCalendar === 'function') {
-                bridge.openCalendar();
-                isNativeHandled = true;
-              }
-            } else if (intent.action === 'open_camera' || intent.action === 'take_photo') {
-              if (typeof bridge.openCamera === 'function') { bridge.openCamera(); isNativeHandled = true; }
-              if (typeof bridge.takePhoto === 'function') { bridge.takePhoto(); isNativeHandled = true; }
-            } else if (intent.action === 'open_app') {
-              if (typeof bridge.openApp === 'function') {
-                bridge.openApp(intent.params.packageName || intent.params.appName || '');
-                isNativeHandled = true;
-              }
-            } else if (intent.action === 'make_call') {
-              if (typeof bridge.makeCall === 'function') {
-                bridge.makeCall(intent.params.phoneNumber || '');
-                isNativeHandled = true;
-              }
-            } else if (intent.action === 'send_whatsapp') {
-              if (typeof bridge.sendWhatsApp === 'function') {
-                bridge.sendWhatsApp(intent.params.phoneNumber || '', intent.params.message || '');
-                isNativeHandled = true;
-              }
-            } else if (intent.action === 'toggle_flashlight') {
-              if (typeof bridge.toggleFlashlight === 'function') {
-                bridge.toggleFlashlight();
-                isNativeHandled = true;
-              }
             }
           } catch (e) {
-            console.warn("Native bridge call warning:", e);
+            console.warn("Native bridge executeAction call warning:", e);
           }
         }
         
-        // Execute browser / Android Intent redirection ONLY if NOT handled natively
-        if (!isNativeHandled) {
+        // Ejecutar redirección de Intent / Navegador como fallback
+        if (intent.action !== 'general_query') {
           executeRealBrowserAction(intent);
         }
 
