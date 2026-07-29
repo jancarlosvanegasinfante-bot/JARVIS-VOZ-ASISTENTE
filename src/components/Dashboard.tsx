@@ -81,6 +81,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [notificationsCount, setNotificationsCount] = useState(3);
   const [showAllAppsModal, setShowAllAppsModal] = useState(false);
   const [appSearchQuery, setAppSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
   const [activeBanner, setActiveBanner] = useState<{ text: string; time: number } | null>(null);
   const [clickingApp, setClickingApp] = useState<string | null>(null);
 
@@ -638,14 +639,39 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div className="flex items-center gap-2">
                 <Grid className="w-4 h-4 text-purple-400" />
                 <h3 className="text-xs font-mono uppercase tracking-widest font-bold text-white">
-                  APLICACIONES INTEGRADAS
+                  APLICACIONES INTEGRADAS ({installedApps.length})
                 </h3>
               </div>
+              <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 rounded-md">
+                VOICE CONTROL OK
+              </span>
             </div>
 
-            {/* Grid of 8 app shortcut icons */}
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+              {['Todas', 'Finanzas', 'Social', 'IA & Dev', 'Movilidad', 'Media', 'Sistema', 'Juegos'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold shrink-0 transition-all cursor-pointer ${
+                    selectedCategory === cat
+                      ? 'bg-cyan-500 text-slate-950 shadow-[0_0_10px_rgba(0,242,255,0.4)]'
+                      : 'bg-[#0a0c1b] text-gray-400 border border-cyan-500/15 hover:text-white hover:border-cyan-500/40'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Grid of app shortcut icons filtered by category */}
             <div className="grid grid-cols-4 gap-3 pt-1">
-              {(installedApps.length > 0 ? installedApps.slice(0, 8) : systemAppIcons).map((app, idx) => {
+              {(installedApps.length > 0
+                ? installedApps
+                    .filter((a) => selectedCategory === 'Todas' || a.category === selectedCategory)
+                    .slice(0, 8)
+                : systemAppIcons
+              ).map((app, idx) => {
                 const appName = app.name || 'App';
                 const cmd = app.cmd || `Abrir ${appName}`;
                 const color = app.color || 'bg-cyan-600';
@@ -673,10 +699,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
             <button
               onClick={() => setShowAllAppsModal(true)}
-              className="w-full py-2 bg-[#0a0c1b] hover:bg-cyan-500/10 border border-cyan-500/20 hover:border-cyan-400/40 text-cyan-400 font-mono text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+              className="w-full py-2.5 bg-[#0a0c1b] hover:bg-cyan-500/10 border border-cyan-500/20 hover:border-cyan-400/40 text-cyan-400 font-mono text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer mt-2 shadow-inner"
             >
-              <Grid className="w-3.5 h-3.5" />
-              <span>VER TODAS ({installedApps.length || 12})</span>
+              <Grid className="w-3.5 h-3.5 text-cyan-400" />
+              <span>VER TODAS LAS {installedApps.length || 70} APPS</span>
             </button>
           </div>
 
@@ -828,71 +854,118 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* All Apps Modal */}
       {showAllAppsModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#101426] border border-cyan-500/30 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-cyan-500/20 pb-3">
-              <h3 className="text-sm font-mono font-bold text-white flex items-center gap-2">
-                <Grid className="w-4 h-4 text-cyan-400" />
-                Todas las Aplicaciones ({installedApps.length})
-              </h3>
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 md:p-4">
+          <div className="bg-[#101426] border border-cyan-500/30 rounded-2xl max-w-xl w-full p-4 md:p-5 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-cyan-500/20 pb-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <Grid className="w-5 h-5 text-cyan-400" />
+                <div>
+                  <h3 className="text-sm font-mono font-bold text-white">
+                    Catálogo Completo de Apps ({installedApps.length})
+                  </h3>
+                  <p className="text-[10px] text-gray-400 font-mono">Dile a Jarvis: "Abre [nombre de la app]"</p>
+                </div>
+              </div>
               <button
                 onClick={() => {
                   setShowAllAppsModal(false);
                   setAppSearchQuery('');
                 }}
-                className="text-gray-400 hover:text-white text-xs font-mono"
+                className="text-gray-400 hover:text-white text-xs font-mono p-1"
               >
                 Cerrar
               </button>
             </div>
 
-            {/* Search Input */}
-            <div className="relative">
-              <input
-                type="text"
-                value={appSearchQuery}
-                onChange={(e) => setAppSearchQuery(e.target.value)}
-                placeholder="Buscar aplicación..."
-                className="w-full bg-[#0a0c1b] border border-cyan-500/20 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 font-mono"
-              />
+            {/* Search Input & Category Filter */}
+            <div className="space-y-2 shrink-0">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={appSearchQuery}
+                  onChange={(e) => setAppSearchQuery(e.target.value)}
+                  placeholder="Buscar aplicación (ej. Nequi, ChatGPT, DiDi)..."
+                  className="w-full bg-[#0a0c1b] border border-cyan-500/20 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 font-mono"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                {['Todas', 'Finanzas', 'Social', 'IA & Dev', 'Movilidad', 'Media', 'Sistema', 'Juegos'].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold shrink-0 transition-all cursor-pointer ${
+                      selectedCategory === cat
+                        ? 'bg-cyan-500 text-slate-950 font-black'
+                        : 'bg-[#0a0c1b] text-gray-400 border border-cyan-500/10'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+            {/* App Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto pr-1 flex-1">
               {installedApps
                 .filter((app) => {
+                  if (selectedCategory !== 'Todas' && app.category !== selectedCategory) return false;
                   const q = appSearchQuery.toLowerCase().trim();
                   if (!q) return true;
                   return (
                     (app.name || '').toLowerCase().includes(q) ||
-                    (app.packageName || '').toLowerCase().includes(q)
+                    (app.packageName || '').toLowerCase().includes(q) ||
+                    (app.category || '').toLowerCase().includes(q)
                   );
                 })
                 .map((app, idx) => (
-                  <button
+                  <div
                     key={idx}
-                    onClick={() => {
-                      setShowAllAppsModal(false);
-                      setAppSearchQuery('');
-                      triggerAppAction(`Abrir ${app.name}`, app.name);
-                    }}
-                    className="p-2.5 bg-[#0a0c1b] border border-cyan-500/10 hover:border-cyan-400/40 rounded-xl text-left flex items-center gap-2.5 transition-all group cursor-pointer"
+                    className="p-3 bg-[#0a0c1b] border border-cyan-500/10 hover:border-cyan-400/40 rounded-xl flex items-center justify-between gap-2.5 transition-all group"
                   >
-                    <div className="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-300 shrink-0">
-                      <Grid className="w-4 h-4" />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-8 h-8 rounded-lg ${app.color || 'bg-cyan-500/20'} flex items-center justify-center text-white shrink-0 font-mono font-bold text-xs`}>
+                        {app.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-white truncate">{app.name}</p>
+                          {app.category && (
+                            <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-cyan-500/10 text-cyan-300 shrink-0">
+                              {app.category}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[9px] font-mono text-gray-500 truncate">{app.packageName}</p>
+                        {app.actions && app.actions.length > 0 && (
+                          <p className="text-[9px] font-sans text-cyan-400/80 truncate mt-0.5">
+                            ⚡ {app.actions.join(' • ')}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-white truncate">{app.name}</p>
-                      <p className="text-[9px] font-mono text-gray-500 truncate">{app.packageName}</p>
-                    </div>
-                  </button>
+
+                    <button
+                      onClick={() => {
+                        setShowAllAppsModal(false);
+                        setAppSearchQuery('');
+                        triggerAppAction(`Abrir ${app.name}`, app.name);
+                      }}
+                      className="px-2.5 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/40 border border-cyan-500/40 text-cyan-300 font-mono text-[10px] font-bold rounded-lg transition-colors shrink-0 cursor-pointer"
+                    >
+                      Ejecutar
+                    </button>
+                  </div>
                 ))}
             </div>
+
             <button
               onClick={() => {
                 setShowAllAppsModal(false);
                 setAppSearchQuery('');
               }}
-              className="w-full py-2 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              className="w-full py-2 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold rounded-xl transition-colors cursor-pointer shrink-0"
             >
               Cerrar
             </button>
