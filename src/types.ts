@@ -1,11 +1,22 @@
 export type ActionType =
   | 'send_whatsapp'
   | 'make_call'
+  | 'answer_call'
+  | 'who_is_calling'
+  | 'who_messaged'
+  | 'reply_message'
   | 'send_sms'
+  | 'set_alarm'
+  | 'set_timer'
   | 'set_reminder'
+  | 'open_calculator'
+  | 'open_gallery'
+  | 'open_contacts'
+  | 'open_calendar'
   | 'play_youtube'
   | 'play_spotify'
   | 'open_app'
+  | 'close_app'
   | 'search_web'
   | 'read_notifications'
   | 'dictate_note'
@@ -28,6 +39,9 @@ export interface ActionParams {
   content?: string;
   date?: string;
   time?: string;
+  hours?: number;
+  minutes?: number;
+  seconds?: number;
   appName?: string;
   packageName?: string;
   query?: string;
@@ -79,7 +93,7 @@ export interface CommandLog {
   timestamp: string;
   transcript: string;
   intent: IntentResult;
-  providerUsed: 'NVIDIA NIM (LLaMA-3.3)' | 'OpenRouter (DeepSeek-R1)' | 'Gemini 3.6 Flash (Fallback)';
+  providerUsed: string;
   latencyMs: number;
   status: 'executed' | 'failed' | 'pending';
 }
