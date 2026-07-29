@@ -57,18 +57,76 @@ export default function App() {
   });
 
   const [installedApps, setInstalledApps] = useState<any[]>(() => [
-    { id: 'a1', name: 'WhatsApp', packageName: 'com.whatsapp' },
-    { id: 'a2', name: 'Teléfono', packageName: 'com.android.dialer' },
-    { id: 'a3', name: 'Spotify', packageName: 'com.spotify.music' },
-    { id: 'a4', name: 'JANBOT Analytics', packageName: 'com.janbot.shop' },
-    { id: 'a5', name: 'Reloj', packageName: 'com.android.deskclock' },
-    { id: 'a6', name: 'SMS', packageName: 'com.android.mms' },
-    { id: 'a7', name: 'Chrome', packageName: 'com.android.chrome' },
-    { id: 'a8', name: 'Notas', packageName: 'com.android.notes' },
-    { id: 'a9', name: 'Cámara', packageName: 'com.android.camera' },
-    { id: 'a10', name: 'Galería', packageName: 'com.sec.android.gallery3d' },
-    { id: 'a11', name: 'Maps', packageName: 'com.google.android.apps.maps' },
-    { id: 'a12', name: 'Contactos', packageName: 'com.android.contacts' },
+    { id: 'app_01', name: 'WA Business', category: 'Social', packageName: 'com.whatsapp.w4b', color: 'bg-emerald-600', actions: ['Enviar mensaje', 'Leer chat'] },
+    { id: 'app_02', name: 'WhatsApp', category: 'Social', packageName: 'com.whatsapp', color: 'bg-emerald-500', actions: ['Enviar mensaje por voz', 'Llamada'] },
+    { id: 'app_03', name: 'Telegram', category: 'Social', packageName: 'org.telegram.messenger', color: 'bg-sky-500', actions: ['Abrir Telegram', 'Enviar mensaje'] },
+    { id: 'app_04', name: 'TikTok', category: 'Social', packageName: 'com.zhiliaoapp.musically', color: 'bg-slate-900', actions: ['Abrir TikTok', 'Ver tendencias'] },
+    { id: 'app_05', name: 'Instagram', category: 'Social', packageName: 'com.instagram.android', color: 'bg-pink-600', actions: ['Abrir Instagram', 'Ver Reels'] },
+    { id: 'app_06', name: 'Facebook', category: 'Social', packageName: 'com.facebook.lite', color: 'bg-blue-600', actions: ['Abrir Facebook', 'Ver noticias'] },
+    { id: 'app_07', name: 'Messenger', category: 'Social', packageName: 'com.facebook.orca', color: 'bg-blue-500', actions: ['Abrir Messenger'] },
+    { id: 'app_08', name: 'Discord', category: 'Social', packageName: 'com.discord', color: 'bg-indigo-600', actions: ['Abrir Discord'] },
+    { id: 'app_09', name: 'Nequi Colombia', category: 'Finanzas', packageName: 'com.nequi.MobileApp', color: 'bg-fuchsia-700', actions: ['Abrir Nequi', 'Consultar saldo', 'Enviar plata'] },
+    { id: 'app_10', name: 'DaviPlata', category: 'Finanzas', packageName: 'com.davivienda.daviplataapp', color: 'bg-red-600', actions: ['Abrir DaviPlata', 'Pasar plata'] },
+    { id: 'app_11', name: 'Nu (Nubank)', category: 'Finanzas', packageName: 'com.nu.production', color: 'bg-purple-700', actions: ['Abrir Nu', 'Ver tarjeta de crédito'] },
+    { id: 'app_12', name: 'AV Villas', category: 'Finanzas', packageName: 'com.grupoaval.avvillas', color: 'bg-red-700', actions: ['Abrir banco AV Villas'] },
+    { id: 'app_13', name: 'MetaTrader 5', category: 'Finanzas', packageName: 'net.metaquotes.metatrader5', color: 'bg-blue-800', actions: ['Abrir MetaTrader 5', 'Ver Forex'] },
+    { id: 'app_14', name: 'Billetera Google', category: 'Finanzas', packageName: 'com.google.android.apps.walletnfcrel', color: 'bg-cyan-600', actions: ['Pago sin contacto'] },
+    { id: 'app_15', name: 'Dropi', category: 'Finanzas', packageName: 'com.dropi.co', color: 'bg-orange-500', actions: ['Abrir Dropi e-commerce'] },
+    { id: 'app_16', name: 'Jansel AI', category: 'Finanzas', packageName: 'com.jansel.shop', color: 'bg-indigo-900', actions: ['Métricas de tienda'] },
+    { id: 'app_17', name: 'Anuncios Meta', category: 'Finanzas', packageName: 'com.facebook.ads.manager', color: 'bg-blue-700', actions: ['Ver campañas Meta Ads'] },
+    { id: 'app_18', name: 'ChatGPT', category: 'IA & Dev', packageName: 'com.openai.chatgpt', color: 'bg-teal-600', actions: ['Preguntar a ChatGPT', 'Dictar consulta IA'] },
+    { id: 'app_19', name: 'Claude AI', category: 'IA & Dev', packageName: 'com.anthropic.claude', color: 'bg-amber-700', actions: ['Abrir Claude IA'] },
+    { id: 'app_20', name: 'Gemini', category: 'IA & Dev', packageName: 'com.google.android.apps.bard', color: 'bg-cyan-600', actions: ['Abrir Google Gemini'] },
+    { id: 'app_21', name: 'Janads IA', category: 'IA & Dev', packageName: 'com.janads.ia', color: 'bg-purple-900', actions: ['Abrir Janads IA'] },
+    { id: 'app_22', name: 'AI Studio', category: 'IA & Dev', packageName: 'com.google.aistudio', color: 'bg-blue-600', actions: ['Abrir AI Studio'] },
+    { id: 'app_23', name: 'Cursor IDE', category: 'IA & Dev', packageName: 'com.cursor.app', color: 'bg-slate-800', actions: ['Abrir Cursor'] },
+    { id: 'app_24', name: 'Vercel', category: 'IA & Dev', packageName: 'com.vercel.app', color: 'bg-black', actions: ['Ver deployments Vercel'] },
+    { id: 'app_25', name: 'Supabase', category: 'IA & Dev', packageName: 'com.supabase.app', color: 'bg-emerald-700', actions: ['Ver base de datos'] },
+    { id: 'app_26', name: 'DiDi', category: 'Movilidad', packageName: 'com.didiglobal.passenger', color: 'bg-orange-600', actions: ['Pedir carro en DiDi', 'Pedir comida'] },
+    { id: 'app_27', name: 'DiDi Conductor', category: 'Movilidad', packageName: 'com.didiglobal.driver', color: 'bg-orange-700', actions: ['Modo conductor'] },
+    { id: 'app_28', name: 'inDrive', category: 'Movilidad', packageName: 'sinet.mobile.agsi', color: 'bg-lime-600', actions: ['Pedir viaje inDrive'] },
+    { id: 'app_29', name: 'Waze', category: 'Movilidad', packageName: 'com.waze', color: 'bg-sky-400', actions: ['Navegar con Waze', 'Reportar tráfico'] },
+    { id: 'app_30', name: 'Google Maps', category: 'Movilidad', packageName: 'com.google.android.apps.maps', color: 'bg-rose-500', actions: ['Buscar dirección', 'Ruta a casa'] },
+    { id: 'app_31', name: 'YouTube', category: 'Media', packageName: 'com.google.android.youtube', color: 'bg-red-600', actions: ['Buscar video', 'Reproducir música'] },
+    { id: 'app_32', name: 'Spotify', category: 'Media', packageName: 'com.spotify.music', color: 'bg-emerald-500', actions: ['Reproducir música', 'Buscar canción'] },
+    { id: 'app_33', name: 'YT Music', category: 'Media', packageName: 'com.google.android.apps.youtube.music', color: 'bg-red-700', actions: ['Escuchar canciones'] },
+    { id: 'app_34', name: 'Snaptube', category: 'Media', packageName: 'com.snaptube.premium', color: 'bg-amber-500', actions: ['Descargar video/música'] },
+    { id: 'app_35', name: 'DramaBox', category: 'Media', packageName: 'com.storymatrix.drama', color: 'bg-rose-600', actions: ['Ver miniserie'] },
+    { id: 'app_36', name: 'DramaWave', category: 'Media', packageName: 'com.dramawave.app', color: 'bg-pink-600', actions: ['Ver novenas cortas'] },
+    { id: 'app_37', name: 'GoodShort', category: 'Media', packageName: 'com.goodshort.drama', color: 'bg-red-500', actions: ['Ver series GoodShort'] },
+    { id: 'app_38', name: 'NetShort', category: 'Media', packageName: 'com.netshort.app', color: 'bg-orange-600', actions: ['Ver NetShort'] },
+    { id: 'app_39', name: 'Cámara', category: 'Sistema', packageName: 'com.android.camera', color: 'bg-pink-600', actions: ['Tomar foto', 'Grabar video'] },
+    { id: 'app_40', name: 'Galería', category: 'Sistema', packageName: 'com.sec.android.gallery3d', color: 'bg-fuchsia-600', actions: ['Abrir fotos', 'Ver imágenes'] },
+    { id: 'app_41', name: 'Calculadora', category: 'Sistema', packageName: 'com.miui.calculator', color: 'bg-orange-500', actions: ['Abrir calculadora'] },
+    { id: 'app_42', name: 'Reloj', category: 'Sistema', packageName: 'com.android.deskclock', color: 'bg-slate-800', actions: ['Poner alarma', 'Pon temporizador'] },
+    { id: 'app_43', name: 'Bloc De Notas', category: 'Sistema', packageName: 'com.miui.notes', color: 'bg-amber-500', actions: ['Dictar nota rápida', 'Ver notas'] },
+    { id: 'app_44', name: 'Calendario', category: 'Sistema', packageName: 'com.google.android.calendar', color: 'bg-blue-500', actions: ['Agendar evento', 'Ver agenda'] },
+    { id: 'app_45', name: 'CamScanner', category: 'Sistema', packageName: 'com.intsig.camscanner', color: 'bg-teal-700', actions: ['Escanear documento PDF'] },
+    { id: 'app_46', name: 'Archivos', category: 'Sistema', packageName: 'com.miui.fileexplorer', color: 'bg-amber-600', actions: ['Ver descargas', 'Liberar espacio'] },
+    { id: 'app_47', name: 'Grabadora', category: 'Sistema', packageName: 'com.android.soundrecorder', color: 'bg-red-600', actions: ['Grabar nota de voz'] },
+    { id: 'app_48', name: 'Contactos', category: 'Sistema', packageName: 'com.android.contacts', color: 'bg-cyan-500', actions: ['Buscar contacto'] },
+    { id: 'app_49', name: 'Teléfono', category: 'Sistema', packageName: 'com.android.dialer', color: 'bg-emerald-600', actions: ['Hacer llamada'] },
+    { id: 'app_50', name: 'Chrome', category: 'Sistema', packageName: 'com.android.chrome', color: 'bg-emerald-600', actions: ['Navegar por internet'] },
+    { id: 'app_51', name: 'Gmail', category: 'Sistema', packageName: 'com.google.android.gm', color: 'bg-red-500', actions: ['Redactar correo'] },
+    { id: 'app_52', name: 'Drive', category: 'Sistema', packageName: 'com.google.android.apps.docs', color: 'bg-blue-600', actions: ['Buscar documento en Drive'] },
+    { id: 'app_53', name: 'Seguridad Xiaomi', category: 'Sistema', packageName: 'com.miui.securitycenter', color: 'bg-emerald-700', actions: ['Escanear virus', 'Limpiar caché'] },
+    { id: 'app_54', name: 'Mi Remoto', category: 'Sistema', packageName: 'com.duokan.phone.remotecontroller', color: 'bg-slate-700', actions: ['Control infrarrojo TV'] },
+    { id: 'app_55', name: 'ShareMe', category: 'Sistema', packageName: 'com.xiaomi.midrop', color: 'bg-sky-600', actions: ['Transferir archivos'] },
+    { id: 'app_56', name: 'Clima', category: 'Sistema', packageName: 'com.miui.weather2', color: 'bg-blue-400', actions: ['Ver pronóstico del tiempo'] },
+    { id: 'app_57', name: 'Brújula', category: 'Sistema', packageName: 'com.miui.compass', color: 'bg-slate-800', actions: ['Abrir brújula digital'] },
+    { id: 'app_58', name: 'Autenticador 2FA', category: 'Sistema', packageName: 'com.google.android.apps.authenticator2', color: 'bg-blue-600', actions: ['Ver códigos 2FA'] },
+    { id: 'app_59', name: 'Claro Colombia', category: 'Sistema', packageName: 'com.claro.colombia', color: 'bg-red-600', actions: ['Consultar datos', 'Recargar plan'] },
+    { id: 'app_60', name: 'Xiaomi Earbuds', category: 'Sistema', packageName: 'com.xiaomi.earbuds', color: 'bg-black', actions: ['Batería de audífonos'] },
+    { id: 'app_61', name: 'Google Home', category: 'Sistema', packageName: 'com.google.android.apps.chromecast.app', color: 'bg-orange-500', actions: ['Control domótico'] },
+    { id: 'app_62', name: 'Free Fire', category: 'Juegos', packageName: 'com.dts.freefireth', color: 'bg-amber-600', actions: ['Lanzar Free Fire'] },
+    { id: 'app_63', name: 'Clash of Clans', category: 'Juegos', packageName: 'com.supercell.clashofclans', color: 'bg-amber-500', actions: ['Abrir Clash of Clans'] },
+    { id: 'app_64', name: 'Clash Royale', category: 'Juegos', packageName: 'com.supercell.clashroyale', color: 'bg-blue-600', actions: ['Abrir Clash Royale'] },
+    { id: 'app_65', name: 'FC Mobile', category: 'Juegos', packageName: 'com.ea.gp.fifamobile', color: 'bg-emerald-800', actions: ['Jugar FC Mobile'] },
+    { id: 'app_66', name: 'Parchís Star', category: 'Juegos', packageName: 'com.playspace.parchis', color: 'bg-purple-600', actions: ['Jugar Parchís'] },
+    { id: 'app_67', name: 'BombSquad', category: 'Juegos', packageName: 'net.froemling.bombsquad', color: 'bg-purple-700', actions: ['Abrir BombSquad'] },
+    { id: 'app_68', name: 'Tower War', category: 'Juegos', packageName: 'com.saygames.towerwar', color: 'bg-sky-600', actions: ['Abrir Tower War'] },
+    { id: 'app_69', name: 'Adventure Ball', category: 'Juegos', packageName: 'com.adventureball.game', color: 'bg-yellow-600', actions: ['Jugar Adventure Ball'] },
+    { id: 'app_70', name: 'Zoom', category: 'Social', packageName: 'us.zoom.videomeetings', color: 'bg-blue-500', actions: ['Abrir reunión Zoom'] }
   ]);
 
   const [isNativeBridgeActive, setIsNativeBridgeActive] = useState(false);
@@ -220,9 +278,13 @@ export default function App() {
     };
 
     // Native Speech Recognition Receivers from Android App
-    (window as any).onNativeTranscript = (text: string) => {
-      console.log("⚡ [Native Speech] Transcript recibido:", text);
+    (window as any).onNativeTranscript = (text: string, isFinal?: boolean) => {
+      console.log("⚡ [Native Speech] Transcript recibido:", text, "isFinal:", isFinal);
       setTranscript(text);
+      if (isFinal === false) {
+        // Partial text only! Do NOT execute command yet
+        return;
+      }
       setIsListening(false);
       if (text && text.trim() && handleProcessCommandRef.current) {
         handleProcessCommandRef.current(text.trim());
@@ -361,12 +423,9 @@ export default function App() {
         const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
         const encodedMsg = encodeURIComponent(params.message || 'Hola');
         if (cleanPhone) {
-          window.location.href = `whatsapp://send?phone=${cleanPhone}&text=${encodedMsg}`;
-          setTimeout(() => {
-            window.location.href = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMsg}`;
-          }, 400);
+          window.open(`https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMsg}`, '_blank');
         } else {
-          window.location.href = `https://api.whatsapp.com/send?text=${encodedMsg}`;
+          window.open(`https://api.whatsapp.com/send?text=${encodedMsg}`, '_blank');
         }
       } else if (action === 'send_sms') {
         const matchedContact = contacts.find(
@@ -393,52 +452,85 @@ export default function App() {
         }
       } else if (action === 'play_youtube') {
         const query = encodeURIComponent(params.query || params.track || 'musica');
-        window.location.href = `vnd.youtube://results?search_query=${query}`;
-        setTimeout(() => {
-          window.location.href = `https://www.youtube.com/results?search_query=${query}`;
-        }, 400);
+        window.open(`https://www.youtube.com/results?search_query=${query}`, '_blank');
       } else if (action === 'play_spotify') {
         const track = encodeURIComponent(params.track || 'musica');
-        window.location.href = `spotify:search:${track}`;
-        setTimeout(() => {
-          window.location.href = `https://open.spotify.com/search/${track}`;
-        }, 400);
+        window.open(`https://open.spotify.com/search/${track}`, '_blank');
       } else if (action === 'open_app') {
         const appName = (params.appName || '').toLowerCase();
-        const pkg = params.packageName;
+        let pkg = params.packageName;
+
+        if (!pkg && appName) {
+          const match = installedApps.find((a: any) =>
+            (a.name || '').toLowerCase().includes(appName) || appName.includes((a.name || '').toLowerCase())
+          );
+          if (match) pkg = match.packageName;
+        }
 
         if (pkg) {
           window.location.href = `intent://#Intent;scheme=package;package=${pkg};end`;
         } else if (appName.includes('camara') || appName.includes('cámara') || appName.includes('foto')) {
-          window.location.href = 'intent://#Intent;action=android.media.action.IMAGE_CAPTURE;end';
+          window.open('https://camera.google.com', '_blank');
         } else if (appName.includes('chrome') || appName.includes('browser') || appName.includes('navegador')) {
-          window.location.href = 'googlechrome://';
-          setTimeout(() => { window.location.href = 'https://www.google.com'; }, 400);
+          window.open('https://google.com', '_blank');
         } else if (appName.includes('whatsapp')) {
-          window.location.href = 'whatsapp://';
+          window.open('https://web.whatsapp.com', '_blank');
         } else if (appName.includes('spotify')) {
-          window.location.href = 'spotify://';
+          window.open('https://open.spotify.com', '_blank');
         } else if (appName.includes('youtube')) {
-          window.location.href = 'vnd.youtube://';
+          window.open('https://youtube.com', '_blank');
         } else if (appName.includes('map') || appName.includes('gps')) {
-          window.location.href = 'geo:0,0';
+          window.open('https://maps.google.com', '_blank');
+        } else if (appName.includes('play store') || appName.includes('tienda')) {
+          window.open('https://play.google.com', '_blank');
         } else {
-          window.location.href = `https://www.google.com/search?q=${encodeURIComponent(params.appName || 'app')}`;
+          window.open(`https://www.google.com/search?q=${encodeURIComponent(params.appName || 'app')}`, '_blank');
         }
       } else if (action === 'take_photo' || action === 'open_camera') {
-        window.location.href = 'intent://#Intent;action=android.media.action.IMAGE_CAPTURE;end';
+        window.open('https://camera.google.com', '_blank');
       } else if (action === 'toggle_wifi') {
         window.location.href = 'intent://#Intent;action=android.settings.WIFI_SETTINGS;end';
       } else if (action === 'toggle_bluetooth') {
         window.location.href = 'intent://#Intent;action=android.settings.BLUETOOTH_SETTINGS;end';
       } else if (action === 'airplane_mode' || action === 'toggle_flashlight') {
         window.location.href = 'intent://#Intent;action=android.settings.SETTINGS;end';
-      } else if (action === 'search_web' || action === 'general_query') {
+      } else if (action === 'general_query') {
+        // general_query es respondida directamente por voz (TTS) con la respuesta de Gemini. NO abre navegador.
+        console.log("⚡ [General Query] Respuesta leída por voz:", params.query);
+      } else if (action === 'search_web') {
         const query = encodeURIComponent(params.query || params.content || 'Jarvis Voice');
-        window.location.href = `https://www.google.com/search?q=${query}`;
+        window.open(`https://www.google.com/search?q=${query}`, '_blank');
+      } else if (action === 'set_alarm') {
+        let hour = 7, min = 0;
+        if (params.time) {
+          const parts = params.time.split(':');
+          if (parts.length >= 2) {
+            hour = parseInt(parts[0], 10) || 7;
+            min = parseInt(parts[1], 10) || 0;
+          }
+        }
+        const title = encodeURIComponent(params.title || 'Alarma Jarvis');
+        window.location.href = `intent://#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR=${hour};i.android.intent.extra.alarm.MINUTES=${min};S.android.intent.extra.alarm.MESSAGE=${title};B.android.intent.extra.alarm.SKIP_UI=false;end`;
+        setTimeout(() => {
+          window.location.href = `intent://#Intent;action=android.provider.AlarmClock.SHOW_ALARMS;end`;
+        }, 500);
+      } else if (action === 'set_timer') {
+        const secs = params.seconds || (params.minutes ? params.minutes * 60 : 60);
+        window.location.href = `intent://#Intent;action=android.intent.action.SET_TIMER;i.android.intent.extra.alarm.LENGTH=${secs};end`;
       } else if (action === 'set_reminder') {
         const title = encodeURIComponent(params.title || 'Recordatorio Jarvis');
-        window.location.href = `https://calendar.google.com/calendar/u/0/r/eventedit?text=${title}`;
+        window.location.href = `intent://#Intent;action=android.intent.action.INSERT;data=content://com.android.calendar/events;S.title=${title};end`;
+        setTimeout(() => {
+          window.open(`https://calendar.google.com/calendar/u/0/r/eventedit?text=${title}`, '_blank');
+        }, 500);
+      } else if (action === 'open_calculator') {
+        window.location.href = `intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_CALCULATOR;end`;
+      } else if (action === 'open_gallery') {
+        window.location.href = `intent://#Intent;action=android.intent.action.VIEW;type=image/*;end`;
+      } else if (action === 'open_contacts') {
+        window.location.href = `intent://#Intent;action=android.intent.action.VIEW;data=content://contacts/people;end`;
+      } else if (action === 'open_calendar') {
+        window.location.href = `intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_CALENDAR;end`;
       }
     } catch (err) {
       console.warn("Error executing real action:", err);
@@ -483,31 +575,82 @@ export default function App() {
           audioEngine.speak(intent.feedbackText, () => setIsSpeaking(false));
         }
 
+        let isNativeHandled = false;
+
         // Ejecutar acción DE VERDAD en el celular (vía Bridge o Browser)
         if (typeof window !== 'undefined' && window.AndroidBridge) {
           const bridge = window.AndroidBridge as any;
           try {
             if (typeof bridge.executeAction === 'function') {
               bridge.executeAction(JSON.stringify(intent));
+              isNativeHandled = true;
             }
             // Explicit helper calls
-            if (intent.action === 'open_camera' || intent.action === 'take_photo') {
-              if (typeof bridge.openCamera === 'function') bridge.openCamera();
-              if (typeof bridge.takePhoto === 'function') bridge.takePhoto();
+            if (intent.action === 'general_query') {
+              isNativeHandled = true;
+            } else if (intent.action === 'set_alarm') {
+              if (typeof bridge.setAlarm === 'function') {
+                bridge.setAlarm(intent.params.time || '07:00', intent.params.title || 'Alarma');
+                isNativeHandled = true;
+              }
+            } else if (intent.action === 'set_timer') {
+              if (typeof bridge.setTimer === 'function') {
+                bridge.setTimer(intent.params.seconds || 60, intent.params.title || 'Timer');
+                isNativeHandled = true;
+              }
+            } else if (intent.action === 'open_calculator') {
+              if (typeof bridge.openCalculator === 'function') {
+                bridge.openCalculator();
+                isNativeHandled = true;
+              }
+            } else if (intent.action === 'open_gallery') {
+              if (typeof bridge.openGallery === 'function') {
+                bridge.openGallery();
+                isNativeHandled = true;
+              }
+            } else if (intent.action === 'open_contacts') {
+              if (typeof bridge.openContacts === 'function') {
+                bridge.openContacts();
+                isNativeHandled = true;
+              }
+            } else if (intent.action === 'open_calendar') {
+              if (typeof bridge.openCalendar === 'function') {
+                bridge.openCalendar();
+                isNativeHandled = true;
+              }
+            } else if (intent.action === 'open_camera' || intent.action === 'take_photo') {
+              if (typeof bridge.openCamera === 'function') { bridge.openCamera(); isNativeHandled = true; }
+              if (typeof bridge.takePhoto === 'function') { bridge.takePhoto(); isNativeHandled = true; }
             } else if (intent.action === 'open_app') {
-              if (typeof bridge.openApp === 'function') bridge.openApp(intent.params.packageName || intent.params.appName);
+              if (typeof bridge.openApp === 'function') {
+                bridge.openApp(intent.params.packageName || intent.params.appName || '');
+                isNativeHandled = true;
+              }
             } else if (intent.action === 'make_call') {
-              if (typeof bridge.makeCall === 'function') bridge.makeCall(intent.params.phoneNumber || '');
+              if (typeof bridge.makeCall === 'function') {
+                bridge.makeCall(intent.params.phoneNumber || '');
+                isNativeHandled = true;
+              }
             } else if (intent.action === 'send_whatsapp') {
-              if (typeof bridge.sendWhatsApp === 'function') bridge.sendWhatsApp(intent.params.phoneNumber || '', intent.params.message || '');
+              if (typeof bridge.sendWhatsApp === 'function') {
+                bridge.sendWhatsApp(intent.params.phoneNumber || '', intent.params.message || '');
+                isNativeHandled = true;
+              }
+            } else if (intent.action === 'toggle_flashlight') {
+              if (typeof bridge.toggleFlashlight === 'function') {
+                bridge.toggleFlashlight();
+                isNativeHandled = true;
+              }
             }
           } catch (e) {
             console.warn("Native bridge call warning:", e);
           }
         }
         
-        // Execute browser / Android Intent redirection
-        executeRealBrowserAction(intent);
+        // Execute browser / Android Intent redirection ONLY if NOT handled natively
+        if (!isNativeHandled) {
+          executeRealBrowserAction(intent);
+        }
 
         // WhatsApp Accessibility Service Trigger
         if (intent.action === 'send_whatsapp' && accessibilityActive && !window.AndroidBridge) {
