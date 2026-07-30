@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Volume2, VolumeX, Mic } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { WhatsAppAccessibilityOverlay } from './components/WhatsAppAccessibilityOverlay';
+import { FloatingChatHead } from './components/FloatingChatHead';
 import { INITIAL_CONTACTS, INITIAL_SALES_DATA } from './data/mockData';
 import { Contact, CommandLog, IntentResult, SalesData } from './types';
 import { audioEngine } from './utils/audioSynth';
@@ -739,6 +740,15 @@ export default function App() {
           onClose={() => setActiveWhatsAppFlow(null)}
         />
       )}
+
+      {/* Floating Chat Head Bubble at App-level */}
+      <FloatingChatHead
+        isListening={isListening}
+        isProcessing={isProcessing}
+        isSpeaking={isSpeaking}
+        onTap={isListening ? handleStopListening : handleStartListening}
+        accessibilityActive={accessibilityActive}
+      />
     </div>
   );
 }

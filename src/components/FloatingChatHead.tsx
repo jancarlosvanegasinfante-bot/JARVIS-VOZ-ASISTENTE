@@ -23,11 +23,21 @@ export const FloatingChatHead: React.FC<FloatingChatHeadProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   
   // Positional states for current dragging coordinate
-  const [posY, setPosY] = useState(240);
+  const [posY, setPosY] = useState(450);
   const [posX, setPosX] = useState(300); // Temporary coordinate during active drag
 
   const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Initialize position based on actual screen dimensions on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const h = window.innerHeight;
+      const w = window.innerWidth;
+      setPosY(h - 180);
+      setPosX(w - 80);
+    }
+  }, []);
 
   // Restart/reset the idle/inactivity timer
   const resetIdleTimer = () => {
@@ -59,11 +69,10 @@ export const FloatingChatHead: React.FC<FloatingChatHeadProps> = ({
     setIsDragging(true);
     setIsInactive(false);
     
-    const currentX = snappedSide === 'left' ? 12 : 300; // approximation of boundary
     dragStartRef.current = {
       x: clientX,
       y: clientY,
-      posX: isDragging ? posX : currentX,
+      posX: posX,
       posY: posY
     };
   };
@@ -74,9 +83,7 @@ export const FloatingChatHead: React.FC<FloatingChatHeadProps> = ({
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches[0]) {
-      handleStart(e.touches[0].clientX, e.touches[0].clientY);
-    }
+    handleStart(e.touches[0].clientX, e.touches[0].clientY);
   };
 
   // Handle Dragging (Mouse & Touch)
@@ -86,9 +93,12 @@ export const FloatingChatHead: React.FC<FloatingChatHeadProps> = ({
     const deltaX = clientX - dragStartRef.current.x;
     const deltaY = clientY - dragStartRef.current.y;
     
-    // Constrain Y position within safe vertical phone boundaries (40px to 540px)
-    const nextY = Math.max(60, Math.min(520, dragStartRef.current.posY + deltaY));
-    const nextX = dragStartRef.current.posX + deltaX;
+    const height = typeof window !== 'undefined' ? window.innerHeight : 600;
+    const width = typeof window !== 'undefined' ? window.innerWidth : 400;
+
+    // Constrain within safe vertical & horizontal viewport boundaries
+    const nextY = Math.max(20, Math.min(height - 80, dragStartRef.current.posY + deltaY));
+    const nextX = Math.max(10, Math.min(width - 80, dragStartRef.current.posX + deltaX));
 
     setPosY(nextY);
     setPosX(nextX);
@@ -109,9 +119,8 @@ export const FloatingChatHead: React.FC<FloatingChatHeadProps> = ({
     if (!isDragging) return;
     setIsDragging(false);
 
-    // If dragged, snap to closest edge based on final horizontal position
-    // Center point of mock phone screen width (~320px inside frame) is around 160px
-    const dragThreshold = 160;
+    const width = typeof window !== 'undefined' ? window.innerWidth : 400;
+    const dragThreshold = width / 2;
     const finalX = posX;
 
     if (finalX < dragThreshold) {
@@ -133,7 +142,6 @@ export const FloatingChatHead: React.FC<FloatingChatHeadProps> = ({
 
   // Tap action (prevent triggering if we actually dragged more than a tiny bit)
   const handleTap = (e: React.MouseEvent | React.TouchEvent) => {
-    // If the drag displacement is very small, count as a tap
     const displacementX = Math.abs(posX - dragStartRef.current.posX);
     const displacementY = Math.abs(posY - dragStartRef.current.posY);
     if (displacementX < 8 && displacementY < 8) {
@@ -144,38 +152,36 @@ export const FloatingChatHead: React.FC<FloatingChatHeadProps> = ({
   // Compute final styles for positioning & transition
   const getPositionStyles = () => {
     const baseStyle: React.CSSProperties = {
-      position: 'absolute',
+      position: 'fixed',
       top: `${posY}px`,
-      zIndex: 50,
+      zIndex: 100,
       userSelect: 'none',
       touchAction: 'none',
     };
 
     if (isDragging) {
-      // Free positioning during active drag
-      baseStyle.left = `${Math.max(10, Math.min(270, posX))}px`;
+      baseStyle.left = `${posX}px`;
     } else {
-      // Snapped alignment with smooth animated transitions
-      baseStyle.transition = 'all 0.5s cubic-bezier(0.19, 1, 0.22, 1)';
+      baseStyle.transition = 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)';
       
       if (snappedSide === 'left') {
-        baseStyle.left = '12px';
+        baseStyle.left = '0px';
         if (isInactive) {
-          // Hide half of the bubble off-screen to the left
-          baseStyle.transform = 'translateX(-34px)';
+          // Slide 70% off-screen to the left, dimming opacity
+          baseStyle.transform = 'translateX(-40px)';
           baseStyle.opacity = 0.35;
         } else {
-          baseStyle.transform = 'translateX(0)';
+          baseStyle.transform = 'translateX(16px)';
           baseStyle.opacity = 1;
         }
       } else {
-        baseStyle.left = 'calc(100% - 76px)'; // 64px width + 12px margin
+        baseStyle.left = 'calc(100vw - 64px)';
         if (isInactive) {
-          // Hide half of the bubble off-screen to the right
-          baseStyle.transform = 'translateX(34px)';
+          // Slide 70% off-screen to the right, dimming opacity
+          baseStyle.transform = 'translateX(40px)';
           baseStyle.opacity = 0.35;
         } else {
-          baseStyle.transform = 'translateX(0)';
+          baseStyle.transform = 'translateX(-16px)';
           baseStyle.opacity = 1;
         }
       }
@@ -200,64 +206,55 @@ export const FloatingChatHead: React.FC<FloatingChatHeadProps> = ({
         setIsHovered(false);
         resetIdleTimer();
       }}
-      className={`select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} transition-opacity duration-300`}
+      className={`select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} transition-all duration-500`}
     >
-      {/* Glow aura (grows beautifully without radiating/pinging rings) */}
-      <div 
-        className={`absolute inset-0 rounded-full bg-[#00f2ff]/20 blur-xl transition-all duration-500 ${
-          isListening ? 'scale-125 opacity-70 bg-[#00f2ff]/30' : 
-          isProcessing ? 'scale-110 opacity-60 bg-amber-500/20' : 
-          isSpeaking ? 'scale-115 opacity-60 bg-emerald-500/20' : 'scale-90 opacity-40'
-        }`} 
-      />
-
-      {/* Main button frame */}
+      {/* Main button frame - Absolutely NO external expanding orbs or rings outside button boundary */}
       <button
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
         onClick={handleTap}
         className={`relative w-16 h-16 rounded-full flex items-center justify-center border transition-all duration-300 ${
           isListening
-            ? 'bg-gradient-to-br from-[#0c162b] to-[#040914] border-[#00f2ff] scale-92 shadow-[inset_0_4px_12px_rgba(0,0,0,0.7),_0_0_20px_rgba(0,242,255,0.4)] ring-2 ring-[#00f2ff]/40'
+            ? 'bg-gradient-to-br from-[#005a70] to-[#041a24] border-[#00f2ff] scale-95 shadow-[inset_0_4px_12px_rgba(0,0,0,0.8),_0_0_15px_rgba(0,242,255,0.6)] ring-2 ring-[#00f2ff]/30'
             : isProcessing
-            ? 'bg-gradient-to-tr from-[#241705] to-[#0d0a04] border-amber-500 scale-105 shadow-[0_0_15px_rgba(245,158,11,0.4)] animate-pulse'
+            ? 'bg-gradient-to-tr from-[#241705] to-[#0d0a04] border-amber-500 scale-100 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]'
             : isSpeaking
-            ? 'bg-gradient-to-tr from-[#052214] to-[#030c08] border-emerald-500 scale-105 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-            : 'bg-[#0e1017]/95 border-[#00f2ff]/35 shadow-[0_4px_15px_rgba(0,0,0,0.5)] hover:scale-105 hover:border-[#00f2ff]/80 hover:shadow-[0_0_20px_rgba(0,242,255,0.4)]'
+            ? 'bg-gradient-to-tr from-[#052214] to-[#030c08] border-emerald-500 scale-100 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]'
+            : 'bg-[#0a0c14]/95 border-[#00f2ff]/30 shadow-[0_6px_20px_rgba(0,0,0,0.6)] hover:scale-105 hover:border-[#00f2ff]/75 hover:shadow-[0_0_12px_rgba(0,242,255,0.35)]'
         }`}
         title="Toca para hablar con Jarvis"
       >
-        {/* Breathing ambient ring */}
-        <div className={`absolute inset-0 rounded-full border-2 border-transparent transition-all duration-500 ${
-          isListening ? 'border-[#00f2ff] animate-pulse' : ''
+        {/* Sleek inner glowing border to show the pressed action */}
+        <div className={`absolute inset-0.5 rounded-full border border-transparent transition-all duration-300 ${
+          isListening ? 'border-[#00f2ff]/50 bg-cyan-950/25' : ''
         }`} />
 
         {/* Dynamic visual state representation */}
         <div className="relative z-10 text-white flex flex-col items-center justify-center">
           {isListening ? (
-            /* High-tech audio waveform (equalizer bars) instead of expanding orbs */
+            /* High-tech internal audio waveform (equalizer bars) instead of expanding orbs */
             <div className="flex gap-1 items-center justify-center h-5 px-1">
-              <span className="w-1.5 h-3 bg-cyan-400 rounded-full animate-[pulse_0.8s_infinite_ease-in-out]" />
-              <span className="w-1.5 h-5 bg-cyan-300 rounded-full animate-[pulse_0.8s_infinite_ease-in-out_150ms]" />
-              <span className="w-1.5 h-4 bg-cyan-400 rounded-full animate-[pulse_0.8s_infinite_ease-in-out_300ms]" />
-              <span className="w-1.5 h-2.5 bg-cyan-500 rounded-full animate-[pulse_0.8s_infinite_ease-in-out_450ms]" />
+              <span className="w-1 h-3 bg-cyan-400 rounded-full animate-[pulse_0.7s_infinite_ease-in-out]" />
+              <span className="w-1 h-5 bg-cyan-300 rounded-full animate-[pulse_0.7s_infinite_ease-in-out_120ms]" />
+              <span className="w-1 h-4 bg-cyan-400 rounded-full animate-[pulse_0.7s_infinite_ease-in-out_240ms]" />
+              <span className="w-1 h-2.5 bg-cyan-500 rounded-full animate-[pulse_0.7s_infinite_ease-in-out_360ms]" />
             </div>
           ) : isProcessing ? (
-            <Sparkles className="w-7 h-7 text-amber-300 animate-spin" />
+            <Sparkles className="w-6 h-6 text-amber-300 animate-spin" />
           ) : isSpeaking ? (
-            <Volume2 className="w-7 h-7 text-emerald-300 animate-bounce" />
+            <Volume2 className="w-6 h-6 text-emerald-300 animate-bounce" />
           ) : (
             <div className="relative">
-              <Bot className="w-7 h-7 text-[#00f2ff]" />
+              <Bot className="w-6 h-6 text-[#00f2ff]" />
               {/* Active breathing dot inside the robot eye or top right */}
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-cyan-400 ring-2 ring-[#0e1017] animate-pulse" />
+              <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 ring-2 ring-[#0a0c14] animate-pulse" />
             </div>
           )}
         </div>
 
         {/* Accessibility Indicator Badge */}
         {accessibilityActive && !isListening && (
-          <div className="absolute -bottom-1 -right-1 bg-[#10b981]/25 text-[#10b981] border border-[#10b981]/30 text-[8px] font-mono font-black px-1 py-0.2 rounded-md shadow">
+          <div className="absolute -bottom-1 -right-1 bg-[#10b981]/25 text-[#10b981] border border-[#10b981]/30 text-[8px] font-mono font-black px-1.5 py-0.5 rounded shadow">
             ACC
           </div>
         )}
