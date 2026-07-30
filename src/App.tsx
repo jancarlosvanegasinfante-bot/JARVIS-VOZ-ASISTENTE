@@ -26,6 +26,8 @@ declare global {
       setProactiveMode?: (enabled: boolean) => void;
       isProactiveModeEnabled?: () => boolean;
       openSpotify?: (track: string) => void;
+      startFloatingButton?: () => void;
+      stopFloatingButton?: () => void;
     };
     updateAndroidContacts?: (contactsJson: string) => void;
     updateAndroidApps?: (appsJson: string) => void;
