@@ -84,6 +84,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
   const [activeBanner, setActiveBanner] = useState<{ text: string; time: number } | null>(null);
   const [clickingApp, setClickingApp] = useState<string | null>(null);
+  const [floatingActive, setFloatingActive] = useState(true);
 
   // Trigger app action with instant visual & haptic feedback
   const triggerAppAction = (cmd: string, appLabel?: string) => {
@@ -246,7 +247,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         {showQuickAccess && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
             {/* 1. Probar Voz */}
             <button
               onClick={() => {
@@ -321,6 +322,38 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div>
                 <p className="text-[10px] font-mono tracking-wider font-bold text-teal-300 uppercase">AJUSTES</p>
                 <p className="text-xs font-black text-white leading-snug">DEL SISTEMA</p>
+              </div>
+            </button>
+
+            {/* 5. Botón Flotante en Pantalla */}
+            <button
+              onClick={() => {
+                const nextState = !floatingActive;
+                setFloatingActive(nextState);
+                if (typeof window !== 'undefined' && window.AndroidBridge) {
+                  if (nextState && window.AndroidBridge.startFloatingButton) {
+                    window.AndroidBridge.startFloatingButton();
+                  } else if (!nextState && window.AndroidBridge.stopFloatingButton) {
+                    window.AndroidBridge.stopFloatingButton();
+                  }
+                } else {
+                  onTestCommand(nextState ? "Activar Botón Flotante" : "Desactivar Botón Flotante");
+                }
+              }}
+              className={`p-4 rounded-2xl border text-left space-y-2.5 transition-all cursor-pointer group ${
+                floatingActive
+                  ? 'bg-gradient-to-br from-cyan-500/20 to-indigo-600/30 border-cyan-400/80 shadow-[0_0_15px_rgba(0,242,255,0.25)]'
+                  : 'bg-slate-900/80 border-slate-700/50 opacity-60'
+              }`}
+            >
+              <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 group-hover:scale-110 transition-transform">
+                <Smartphone className="w-5 h-5 text-cyan-300" />
+              </div>
+              <div>
+                <p className="text-[10px] font-mono tracking-wider font-bold text-cyan-300 uppercase">BOTÓN FLOTANTE</p>
+                <p className="text-xs font-black text-white leading-snug">
+                  {floatingActive ? 'EN PANTALLA' : 'APAGADO'}
+                </p>
               </div>
             </button>
           </div>
