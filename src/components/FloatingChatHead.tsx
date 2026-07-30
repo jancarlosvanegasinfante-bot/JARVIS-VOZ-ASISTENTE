@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Mic, Bot, Sparkles, Volume2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Mic, Bot, Sparkles, Volume2, Smartphone } from 'lucide-react';
 
 interface FloatingChatHeadProps {
   isListening: boolean;
@@ -16,100 +16,265 @@ export const FloatingChatHead: React.FC<FloatingChatHeadProps> = ({
   onTap,
   accessibilityActive,
 }) => {
-  const [position, setPosition] = useState({ x: 20, y: 180 });
+  // Snapped side state: 'left' or 'right'
+  const [snappedSide, setSnappedSide] = useState<'left' | 'right'>('right');
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [isInactive, setIsInactive] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  
+  // Positional states for current dragging coordinate
+  const [posY, setPosY] = useState(240);
+  const [posX, setPosX] = useState(300); // Temporary coordinate during active drag
+
+  const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Restart/reset the idle/inactivity timer
+  const resetIdleTimer = () => {
+    setIsInactive(false);
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+    
+    // If we are actively listening, processing, speaking, dragging, or hovering, do not minimize
+    if (isListening || isProcessing || isSpeaking || isDragging || isHovered) {
+      return;
+    }
+
+    idleTimerRef.current = setTimeout(() => {
+      setIsInactive(true);
+    }, 4000); // Minimize after 4 seconds of absolute silence/inactivity
+  };
+
+  // Sync state changes with the idle timer
+  useEffect(() => {
+    resetIdleTimer();
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, [isListening, isProcessing, isSpeaking, isDragging, isHovered]);
+
+  // Handle Drag Start (Mouse & Touch)
+  const handleStart = (clientX: number, clientY: number) => {
+    setIsDragging(true);
+    setIsInactive(false);
+    
+    const currentX = snappedSide === 'left' ? 12 : 300; // approximation of boundary
+    dragStartRef.current = {
+      x: clientX,
+      y: clientY,
+      posX: isDragging ? posX : currentX,
+      posY: posY
+    };
+  };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+    e.preventDefault();
+    handleStart(e.clientX, e.clientY);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches[0]) {
+      handleStart(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  };
+
+  // Handle Dragging (Mouse & Touch)
+  const handleMove = (clientX: number, clientY: number) => {
+    if (!isDragging) return;
+    
+    const deltaX = clientX - dragStartRef.current.x;
+    const deltaY = clientY - dragStartRef.current.y;
+    
+    // Constrain Y position within safe vertical phone boundaries (40px to 540px)
+    const nextY = Math.max(60, Math.min(520, dragStartRef.current.posY + deltaY));
+    const nextX = dragStartRef.current.posX + deltaX;
+
+    setPosY(nextY);
+    setPosX(nextX);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    handleMove(e.clientX, e.clientY);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches[0]) {
+      handleMove(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  };
+
+  // Handle Drag End and Snapping (Mouse & Touch)
+  const handleEnd = () => {
     if (!isDragging) return;
-    setPosition({
-      x: Math.max(10, Math.min(260, e.clientX - dragStart.x)),
-      y: Math.max(40, Math.min(520, e.clientY - dragStart.y)),
-    });
+    setIsDragging(false);
+
+    // If dragged, snap to closest edge based on final horizontal position
+    // Center point of mock phone screen width (~320px inside frame) is around 160px
+    const dragThreshold = 160;
+    const finalX = posX;
+
+    if (finalX < dragThreshold) {
+      setSnappedSide('left');
+    } else {
+      setSnappedSide('right');
+    }
+
+    resetIdleTimer();
   };
 
   const handleMouseUp = () => {
-    setIsDragging(false);
+    handleEnd();
+  };
+
+  const handleTouchEnd = () => {
+    handleEnd();
+  };
+
+  // Tap action (prevent triggering if we actually dragged more than a tiny bit)
+  const handleTap = (e: React.MouseEvent | React.TouchEvent) => {
+    // If the drag displacement is very small, count as a tap
+    const displacementX = Math.abs(posX - dragStartRef.current.posX);
+    const displacementY = Math.abs(posY - dragStartRef.current.posY);
+    if (displacementX < 8 && displacementY < 8) {
+      onTap();
+    }
+  };
+
+  // Compute final styles for positioning & transition
+  const getPositionStyles = () => {
+    const baseStyle: React.CSSProperties = {
+      position: 'absolute',
+      top: `${posY}px`,
+      zIndex: 50,
+      userSelect: 'none',
+      touchAction: 'none',
+    };
+
+    if (isDragging) {
+      // Free positioning during active drag
+      baseStyle.left = `${Math.max(10, Math.min(270, posX))}px`;
+    } else {
+      // Snapped alignment with smooth animated transitions
+      baseStyle.transition = 'all 0.5s cubic-bezier(0.19, 1, 0.22, 1)';
+      
+      if (snappedSide === 'left') {
+        baseStyle.left = '12px';
+        if (isInactive) {
+          // Hide half of the bubble off-screen to the left
+          baseStyle.transform = 'translateX(-34px)';
+          baseStyle.opacity = 0.35;
+        } else {
+          baseStyle.transform = 'translateX(0)';
+          baseStyle.opacity = 1;
+        }
+      } else {
+        baseStyle.left = 'calc(100% - 76px)'; // 64px width + 12px margin
+        if (isInactive) {
+          // Hide half of the bubble off-screen to the right
+          baseStyle.transform = 'translateX(34px)';
+          baseStyle.opacity = 0.35;
+        } else {
+          baseStyle.transform = 'translateX(0)';
+          baseStyle.opacity = 1;
+        }
+      }
+    }
+
+    return baseStyle;
   };
 
   return (
     <div
-      style={{ left: `${position.x}px`, top: `${position.y}px` }}
+      style={getPositionStyles()}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      className="absolute z-50 select-none cursor-grab active:cursor-grabbing transition-transform duration-75"
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        setIsInactive(false);
+      }}
+      onMouseLeave={() => {
+        handleMouseUp();
+        setIsHovered(false);
+        resetIdleTimer();
+      }}
+      className={`select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} transition-opacity duration-300`}
     >
-      {/* Outer Pulse Rings when active */}
-      {isListening && (
-        <div className="absolute -inset-3 rounded-full bg-[#00f2ff]/30 animate-ping" />
-      )}
-      {isProcessing && (
-        <div className="absolute -inset-3 rounded-full bg-amber-500/30 animate-pulse" />
-      )}
-      {isSpeaking && (
-        <div className="absolute -inset-3 rounded-full bg-emerald-500/30 animate-bounce" />
-      )}
+      {/* Glow aura (grows beautifully without radiating/pinging rings) */}
+      <div 
+        className={`absolute inset-0 rounded-full bg-[#00f2ff]/20 blur-xl transition-all duration-500 ${
+          isListening ? 'scale-125 opacity-70 bg-[#00f2ff]/30' : 
+          isProcessing ? 'scale-110 opacity-60 bg-amber-500/20' : 
+          isSpeaking ? 'scale-115 opacity-60 bg-emerald-500/20' : 'scale-90 opacity-40'
+        }`} 
+      />
 
-      {/* Main Chat Head Bubble */}
+      {/* Main button frame */}
       <button
         onMouseDown={handleMouseDown}
-        onClick={onTap}
-        className={`relative w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+        onTouchStart={handleTouchStart}
+        onClick={handleTap}
+        className={`relative w-16 h-16 rounded-full flex items-center justify-center border transition-all duration-300 ${
           isListening
-            ? 'bg-gradient-to-br from-[#00f2ff] to-[#0066ff] border-[#00f2ff] scale-110 shadow-[0_0_30px_rgba(0,242,255,0.6)] ring-4 ring-[#00f2ff]/30'
+            ? 'bg-gradient-to-br from-[#0c162b] to-[#040914] border-[#00f2ff] scale-92 shadow-[inset_0_4px_12px_rgba(0,0,0,0.7),_0_0_20px_rgba(0,242,255,0.4)] ring-2 ring-[#00f2ff]/40'
             : isProcessing
-            ? 'bg-gradient-to-tr from-amber-600 to-orange-600 border-amber-400 animate-pulse ring-4 ring-amber-400/40 shadow-[0_0_20px_rgba(245,158,11,0.5)]'
+            ? 'bg-gradient-to-tr from-[#241705] to-[#0d0a04] border-amber-500 scale-105 shadow-[0_0_15px_rgba(245,158,11,0.4)] animate-pulse'
             : isSpeaking
-            ? 'bg-gradient-to-tr from-emerald-600 to-teal-600 border-emerald-400 ring-4 ring-emerald-400/40 shadow-[0_0_20px_rgba(16,185,129,0.5)]'
-            : 'bg-[#141418] border-[#00f2ff]/60 hover:scale-105 hover:border-[#00f2ff] shadow-[0_0_20px_rgba(0,242,255,0.3)]'
+            ? 'bg-gradient-to-tr from-[#052214] to-[#030c08] border-emerald-500 scale-105 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+            : 'bg-[#0e1017]/95 border-[#00f2ff]/35 shadow-[0_4px_15px_rgba(0,0,0,0.5)] hover:scale-105 hover:border-[#00f2ff]/80 hover:shadow-[0_0_20px_rgba(0,242,255,0.4)]'
         }`}
         title="Toca para hablar con Jarvis"
       >
-        {/* Glow backdrop */}
-        <div className="absolute inset-0 rounded-full bg-[#00f2ff]/20 blur-md" />
+        {/* Breathing ambient ring */}
+        <div className={`absolute inset-0 rounded-full border-2 border-transparent transition-all duration-500 ${
+          isListening ? 'border-[#00f2ff] animate-pulse' : ''
+        }`} />
 
-        {/* Dynamic Icon */}
+        {/* Dynamic visual state representation */}
         <div className="relative z-10 text-white flex flex-col items-center justify-center">
           {isListening ? (
-            <div className="flex flex-col items-center">
-              <Mic className="w-7 h-7 text-slate-950 animate-bounce" />
+            /* High-tech audio waveform (equalizer bars) instead of expanding orbs */
+            <div className="flex gap-1 items-center justify-center h-5 px-1">
+              <span className="w-1.5 h-3 bg-cyan-400 rounded-full animate-[pulse_0.8s_infinite_ease-in-out]" />
+              <span className="w-1.5 h-5 bg-cyan-300 rounded-full animate-[pulse_0.8s_infinite_ease-in-out_150ms]" />
+              <span className="w-1.5 h-4 bg-cyan-400 rounded-full animate-[pulse_0.8s_infinite_ease-in-out_300ms]" />
+              <span className="w-1.5 h-2.5 bg-cyan-500 rounded-full animate-[pulse_0.8s_infinite_ease-in-out_450ms]" />
             </div>
           ) : isProcessing ? (
-            <Sparkles className="w-7 h-7 text-amber-100 animate-spin" />
+            <Sparkles className="w-7 h-7 text-amber-300 animate-spin" />
           ) : isSpeaking ? (
-            <Volume2 className="w-7 h-7 text-emerald-100 animate-pulse" />
+            <Volume2 className="w-7 h-7 text-emerald-300 animate-bounce" />
           ) : (
             <div className="relative">
-              <Bot className="w-8 h-8 text-[#00f2ff]" />
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#00f2ff] ring-2 ring-[#0a0a0c] animate-ping" />
+              <Bot className="w-7 h-7 text-[#00f2ff]" />
+              {/* Active breathing dot inside the robot eye or top right */}
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-cyan-400 ring-2 ring-[#0e1017] animate-pulse" />
             </div>
           )}
         </div>
 
-        {/* Accessibility Status Badge */}
-        {accessibilityActive && (
-          <div className="absolute -bottom-1 -right-1 bg-green-500/20 text-green-400 border border-green-500/30 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full shadow">
+        {/* Accessibility Indicator Badge */}
+        {accessibilityActive && !isListening && (
+          <div className="absolute -bottom-1 -right-1 bg-[#10b981]/25 text-[#10b981] border border-[#10b981]/30 text-[8px] font-mono font-black px-1 py-0.2 rounded-md shadow">
             ACC
           </div>
         )}
       </button>
 
-      {/* Floating tooltip preview */}
-      <div className="absolute top-16 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#141418] text-gray-300 text-[10px] font-mono tracking-wider px-3 py-1 rounded-full border border-white/10 shadow-xl backdrop-blur-md pointer-events-none">
-        {isListening
-          ? '● ESCUCHANDO...'
-          : isProcessing
-          ? '⚡ PROCESANDO...'
-          : isSpeaking
-          ? '🔊 HABLANDO...'
-          : 'TOCAR PARA HABLAR'}
-      </div>
+      {/* Floating neat text badge preview - only visible on hover & when not minimized */}
+      {!isInactive && (isHovered || isListening || isProcessing || isSpeaking) && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#0b0c11]/95 text-gray-300 text-[9px] font-mono tracking-wider px-2.5 py-1 rounded-lg border border-white/10 shadow-2xl backdrop-blur-md pointer-events-none transition-all duration-300">
+          {isListening
+            ? '🎙️ TE ESCUCHO...'
+            : isProcessing
+            ? '⚙️ PROCESANDO...'
+            : isSpeaking
+            ? '🔊 HABLANDO...'
+            : 'TOCAR PARA DICTAR'}
+        </div>
+      )}
     </div>
   );
 };
