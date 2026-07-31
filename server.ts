@@ -41,7 +41,7 @@ async function startServer() {
     }
     try {
       const response = await ai.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-2.5-flash',
         contents: `El usuario te pregunta por voz en su smartphone: "${question}".
 Responde de forma directa, conversacional, clara y concisa en español (máximo 2-3 frases), ideal para ser leída por voz por Jarvis.`,
       });
@@ -144,7 +144,7 @@ Devuelve un objeto JSON estricto con:
 `;
 
         const response = await ai.models.generateContent({
-          model: 'gemini-3.6-flash',
+          model: 'gemini-2.5-flash',
           contents: `Comando de voz del usuario: "${transcript}"`,
           config: {
             systemInstruction: systemPrompt,
