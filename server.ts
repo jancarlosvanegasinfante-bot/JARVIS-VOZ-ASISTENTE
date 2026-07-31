@@ -170,6 +170,8 @@ Acciones permitidas y sus parámetros:
 18. "close_app": Cerrar la aplicación actual o volver a la pantalla de inicio. params: {}
 19. "search_web": Buscar en la web sólo si dice explícitamente "busca en google" o "busca en la web". params: { "query": string }
 20. "control_music": Controlar reproducción multimedia. params: { "command": "play"|"pause"|"next"|"prev"|"volume_up"|"volume_down", "track": string }
+29. "send_email": Enviar un correo electrónico por Gmail. params: { "to": string, "subject": string, "body": string }
+30. "send_facebook": Enviar un mensaje por Facebook Messenger. params: { "contact": string, "message": string }
 21. "general_query": Úsala para CUALQUIER pregunta de cultura general, ciencia, historia, cálculos, o consultas ("¿cuántos planetas hay?", "¿por qué el cielo es azul?", "¿quién es el presidente de...?"). CRÍTICO: En "feedbackText" DEBES poner la RESPUESTA COMPLETA Y DIRECTA que Jarvis le hablará al usuario (1-3 frases fluidas en español). ¡NUNCA abras navegador ni pongas "Buscando en Google..."! params: { "query": string }
 22. "take_photo": Tomar una foto ahora mismo ("tómame una foto", "saca una foto"). params: {}
 23. "open_camera": Solo abrir la cámara, sin tomar foto todavía ("abre la cámara"). params: {}
