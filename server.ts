@@ -100,15 +100,19 @@ async function startServer() {
     const ai = getGemini();
     if (ai) {
       try {
-        const response = await ai.models.generateContent({
+        const geminiCall = ai.models.generateContent({
           model: 'gemini-2.5-flash',
           contents: userPrompt,
           config: { systemInstruction: systemPrompt },
         });
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Gemini timeout')), 10000)
+        );
+        const response = await Promise.race([geminiCall, timeoutPromise]);
         const text = response.text ? response.text.trim() : '';
         if (text) return { text, provider: 'Gemini 2.5 Flash (gratis)' };
       } catch (err) {
-        console.error('Cascade IA: Gemini falló', err);
+        console.error('Cascade IA: Gemini falló o superó el tiempo límite', err);
       }
     }
 

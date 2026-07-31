@@ -593,6 +593,8 @@ export default function App() {
     }
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       const response = await fetch('/api/intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -602,7 +604,9 @@ export default function App() {
           installedApps,
           salesData,
         }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       const data = await response.json();
       setIsProcessing(false);
@@ -685,10 +689,23 @@ export default function App() {
         };
 
         setLogs((prev) => [newLog, ...prev]);
+      } else {
+        const fallbackMsg = 'No entendí bien eso, ¿puedes repetirlo?';
+        setIsSpeaking(true);
+        if (typeof window !== 'undefined' && window.AndroidBridge?.speak) {
+          try { window.AndroidBridge.speak(fallbackMsg); } catch (e) { console.warn(e); }
+        }
+        audioEngine.speak(fallbackMsg, () => setIsSpeaking(false));
       }
     } catch (err) {
       console.error('Error processing voice command:', err);
       setIsProcessing(false);
+      const errorMsg = 'Tuve un problema para procesar eso, intenta de nuevo.';
+      setIsSpeaking(true);
+      if (typeof window !== 'undefined' && window.AndroidBridge?.speak) {
+        try { window.AndroidBridge.speak(errorMsg); } catch (e) { console.warn(e); }
+      }
+      audioEngine.speak(errorMsg, () => setIsSpeaking(false));
     }
   };
 
