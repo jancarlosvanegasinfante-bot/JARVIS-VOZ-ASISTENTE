@@ -173,6 +173,8 @@ Acciones permitidas y sus parámetros:
 29. "send_email": Enviar un correo electrónico por Gmail. params: { "to": string, "subject": string, "body": string }
 30. "send_facebook": Enviar un mensaje por Facebook Messenger. params: { "contact": string, "message": string }
 31. "take_screenshot": Tomar una captura de pantalla ahora mismo ("toma una captura", "haz un pantallazo", "screenshot"). params: {}
+32. "start_screen_recording": Empezar a grabar la pantalla ("graba la pantalla", "empieza a grabar pantalla"). params: {}
+33. "stop_screen_recording": Detener la grabación de pantalla ("detén la grabación", "para de grabar pantalla"). params: {}
 21. "general_query": Úsala para CUALQUIER pregunta de cultura general, ciencia, historia, cálculos, o consultas ("¿cuántos planetas hay?", "¿por qué el cielo es azul?", "¿quién es el presidente de...?"). CRÍTICO: En "feedbackText" DEBES poner la RESPUESTA COMPLETA Y DIRECTA que Jarvis le hablará al usuario (1-3 frases fluidas en español). ¡NUNCA abras navegador ni pongas "Buscando en Google..."! params: { "query": string }
 22. "take_photo": Tomar una foto ahora mismo ("tómame una foto", "saca una foto"). params: {}
 23. "open_camera": Solo abrir la cámara, sin tomar foto todavía ("abre la cámara"). params: {}
