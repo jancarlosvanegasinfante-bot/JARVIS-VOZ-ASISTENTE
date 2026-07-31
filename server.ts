@@ -33,22 +33,30 @@ async function startServer() {
     extraHeaders: Record<string, string> = {}
   ): Promise<string | null> => {
     try {
-      const resp = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-          ...extraHeaders,
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          temperature: 0.2,
-        }),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      let resp: Response;
+      try {
+        resp = await fetch(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+            ...extraHeaders,
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            temperature: 0.2,
+          }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
       if (!resp.ok) {
         console.error(`Cascade IA: ${baseUrl} respondió ${resp.status}`);
         return null;
@@ -57,7 +65,7 @@ async function startServer() {
       const content = data?.choices?.[0]?.message?.content;
       return content ? String(content).trim() : null;
     } catch (err) {
-      console.error(`Cascade IA: error llamando ${baseUrl}`, err);
+      console.error(`Cascade IA: error o timeout llamando ${baseUrl}`, err);
       return null;
     }
   };
