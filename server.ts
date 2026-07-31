@@ -175,6 +175,10 @@ Acciones permitidas y sus parámetros:
 31. "take_screenshot": Tomar una captura de pantalla ahora mismo ("toma una captura", "haz un pantallazo", "screenshot"). params: {}
 32. "start_screen_recording": Empezar a grabar la pantalla ("graba la pantalla", "empieza a grabar pantalla"). params: {}
 33. "stop_screen_recording": Detener la grabación de pantalla ("detén la grabación", "para de grabar pantalla"). params: {}
+34. "open_app_chat": Abrir una app de mensajería/chat (Claude, Telegram, Instagram, etc.), opcionalmente ir a una conversación específica por posición, y enviar un mensaje. Ej: "abre Claude en la segunda conversación y escríbele que continúe con el proyecto" -> itemIndex: 2. params: { "appName": string, "itemIndex": number (0 si no se especifica cuál conversación), "message": string }
+35. "get_battery_status": Decir el porcentaje de batería actual ("cuánta batería tengo", "qué porcentaje de batería"). params: {}
+36. "toggle_silent_mode": Cambiar el modo de sonido del celular. params: { "mode": "silent"|"vibrate"|"normal" }
+37. "read_screen": Leer en voz alta el texto visible en la pantalla actual ("qué dice aquí", "léeme la pantalla"). params: {}
 21. "general_query": Úsala para CUALQUIER pregunta de cultura general, ciencia, historia, cálculos, o consultas ("¿cuántos planetas hay?", "¿por qué el cielo es azul?", "¿quién es el presidente de...?"). CRÍTICO: En "feedbackText" DEBES poner la RESPUESTA COMPLETA Y DIRECTA que Jarvis le hablará al usuario (1-3 frases fluidas en español). ¡NUNCA abras navegador ni pongas "Buscando en Google..."! params: { "query": string }
 22. "take_photo": Tomar una foto ahora mismo ("tómame una foto", "saca una foto"). params: {}
 23. "open_camera": Solo abrir la cámara, sin tomar foto todavía ("abre la cámara"). params: {}
