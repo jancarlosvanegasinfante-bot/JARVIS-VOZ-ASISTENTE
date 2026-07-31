@@ -89,7 +89,7 @@ async function startServer() {
       const text = await callOpenAICompatible(
         'https://openrouter.ai/api/v1',
         openrouterKey,
-        process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.1-8b-instruct:free',
+        process.env.OPENROUTER_MODEL || 'openrouter/free',
         systemPrompt,
         userPrompt,
         { 'HTTP-Referer': process.env.APP_URL || 'https://jarvis-voz-asistente-production.up.railway.app', 'X-Title': 'Jarvis Voice Assistant' }
@@ -122,6 +122,24 @@ async function startServer() {
   // Limpia una respuesta de texto que puede venir envuelta en ```json ... ``` o ``` ... ```
   const stripCodeFences = (text: string): string => {
     return text.replace(/^```(json)?/i, '').replace(/```$/, '').trim();
+  };
+
+  // NVIDIA/OpenRouter no fuerzan modo JSON estricto como Gemini, así que a veces
+  // el modelo agrega texto conversacional antes/después del JSON. Esto extrae
+  // el primer objeto JSON válido de la respuesta, sin importar qué lo rodee.
+  const extractJsonObject = (text: string): string => {
+    const cleaned = stripCodeFences(text);
+    try {
+      JSON.parse(cleaned);
+      return cleaned;
+    } catch {
+      const start = cleaned.indexOf('{');
+      const end = cleaned.lastIndexOf('}');
+      if (start !== -1 && end !== -1 && end > start) {
+        return cleaned.substring(start, end + 1);
+      }
+      return cleaned;
+    }
   };
 
   app.get('/api/health', (req, res) => {
@@ -255,7 +273,7 @@ Devuelve ÚNICAMENTE un objeto JSON estricto, SIN texto adicional, SIN markdown,
       const result = await getAIResponse(systemPrompt, `Comando de voz del usuario: "${transcript}"`);
 
       if (result) {
-        const jsonText = stripCodeFences(result.text);
+        const jsonText = extractJsonObject(result.text);
         const parsed = JSON.parse(jsonText);
         const duration = Date.now() - startTime;
 
