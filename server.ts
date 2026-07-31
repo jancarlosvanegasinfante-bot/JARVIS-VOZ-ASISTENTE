@@ -182,6 +182,12 @@ Acciones permitidas y sus parámetros:
 38. "open_maps_directions": Trazar ruta hacia un destino en Google Maps o Waze. params: { "destination": string, "app": "maps"|"waze" }
 39. "adjust_volume": Subir, bajar, silenciar o maximizar el volumen multimedia. params: { "direction": "up"|"down"|"mute"|"max" }
 40. "read_recent_messages": Leer en voz alta los últimos mensajes recibidos de WhatsApp, Messenger, Telegram o SMS ("cuáles son mis últimos mensajes", "qué me han escrito"). params: {}
+41. "record_video": Empezar a grabar un video con la cámara ("graba un video", "empieza a grabar video"). params: {}
+42. "stop_video_recording": Detener la grabación de video en curso ("detén el video", "para de grabar"). params: {}
+43. "tell_time": Decir la hora y fecha actual ("qué hora es", "qué día es hoy"). params: {}
+44. "toggle_gps": Abrir los ajustes de ubicación/GPS ("activa el GPS", "abre ubicación"). params: {}
+45. "lock_screen": Bloquear la pantalla del celular ("bloquea el celular", "bloquea la pantalla"). params: {}
+46. "clear_notifications": Limpiar/cerrar el panel de notificaciones ("limpia las notificaciones", "cierra las notificaciones"). params: {}
 21. "general_query": Úsala para CUALQUIER pregunta de cultura general, ciencia, historia, cálculos, o consultas ("¿cuántos planetas hay?", "¿por qué el cielo es azul?", "¿quién es el presidente de...?"). CRÍTICO: En "feedbackText" DEBES poner la RESPUESTA COMPLETA Y DIRECTA que Jarvis le hablará al usuario (1-3 frases fluidas en español). ¡NUNCA abras navegador ni pongas "Buscando en Google..."! params: { "query": string }
 22. "take_photo": Tomar una foto ahora mismo ("tómame una foto", "saca una foto"). params: {}
 23. "open_camera": Solo abrir la cámara, sin tomar foto todavía ("abre la cámara"). params: {}
