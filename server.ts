@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 
 async function startServer() {
   const app = express();
@@ -9,7 +9,7 @@ async function startServer() {
 
   app.use(express.json({ limit: '10mb' }));
 
-  // Instancia compartida de Gemini 3.6 Flash
+  // Instancia compartida de Gemini (fallback final del cascade, capa gratis)
   const getGemini = () => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return null;
@@ -23,6 +23,95 @@ async function startServer() {
     });
   };
 
+  // Llamada genérica a un endpoint compatible con OpenAI chat/completions (NVIDIA NIM y OpenRouter lo son)
+  const callOpenAICompatible = async (
+    baseUrl: string,
+    apiKey: string,
+    model: string,
+    systemPrompt: string,
+    userPrompt: string,
+    extraHeaders: Record<string, string> = {}
+  ): Promise<string | null> => {
+    try {
+      const resp = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+          ...extraHeaders,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: 0.2,
+        }),
+      });
+      if (!resp.ok) {
+        console.error(`Cascade IA: ${baseUrl} respondió ${resp.status}`);
+        return null;
+      }
+      const data: any = await resp.json();
+      const content = data?.choices?.[0]?.message?.content;
+      return content ? String(content).trim() : null;
+    } catch (err) {
+      console.error(`Cascade IA: error llamando ${baseUrl}`, err);
+      return null;
+    }
+  };
+
+  // Cascade de IA 100% gratis: NVIDIA NIM -> OpenRouter -> Gemini -> null (motor de reglas local)
+  const getAIResponse = async (systemPrompt: string, userPrompt: string): Promise<{ text: string; provider: string } | null> => {
+    const nvidiaKey = process.env.NVIDIA_API_KEY;
+    if (nvidiaKey) {
+      const text = await callOpenAICompatible(
+        'https://integrate.api.nvidia.com/v1',
+        nvidiaKey,
+        process.env.NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct',
+        systemPrompt,
+        userPrompt
+      );
+      if (text) return { text, provider: 'NVIDIA NIM (gratis)' };
+    }
+
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
+    if (openrouterKey) {
+      const text = await callOpenAICompatible(
+        'https://openrouter.ai/api/v1',
+        openrouterKey,
+        process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.1-8b-instruct:free',
+        systemPrompt,
+        userPrompt,
+        { 'HTTP-Referer': process.env.APP_URL || 'https://jarvis-voz-asistente-production.up.railway.app', 'X-Title': 'Jarvis Voice Assistant' }
+      );
+      if (text) return { text, provider: 'OpenRouter (gratis)' };
+    }
+
+    const ai = getGemini();
+    if (ai) {
+      try {
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: userPrompt,
+          config: { systemInstruction: systemPrompt },
+        });
+        const text = response.text ? response.text.trim() : '';
+        if (text) return { text, provider: 'Gemini 2.5 Flash (gratis)' };
+      } catch (err) {
+        console.error('Cascade IA: Gemini falló', err);
+      }
+    }
+
+    return null;
+  };
+
+  // Limpia una respuesta de texto que puede venir envuelta en ```json ... ``` o ``` ... ```
+  const stripCodeFences = (text: string): string => {
+    return text.replace(/^```(json)?/i, '').replace(/```$/, '').trim();
+  };
+
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', time: new Date().toISOString() });
   });
@@ -34,22 +123,15 @@ async function startServer() {
       res.status(400).json({ error: 'Pregunta requerida' });
       return;
     }
-    const ai = getGemini();
-    if (!ai) {
-      res.json({ answer: 'No tengo conexión al motor de inteligencia en este momento.' });
+    const result = await getAIResponse(
+      'Eres Jarvis, un asistente de voz para smartphone que responde en español de forma directa, conversacional, clara y concisa (máximo 2-3 frases), ideal para ser leída por voz.',
+      question
+    );
+    if (!result) {
+      res.json({ answer: 'No tengo conexión a ningún motor de inteligencia en este momento.' });
       return;
     }
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `El usuario te pregunta por voz en su smartphone: "${question}".
-Responde de forma directa, conversacional, clara y concisa en español (máximo 2-3 frases), ideal para ser leída por voz por Jarvis.`,
-      });
-      res.json({ answer: response.text ? response.text.trim() : 'No pude encontrar una respuesta clara.' });
-    } catch (err) {
-      console.error('Error en /api/ask:', err);
-      res.json({ answer: 'Tuve un inconveniente al procesar tu consulta.' });
-    }
+    res.json({ answer: result.text, providerUsed: result.provider });
   });
 
   // API Endpoint: Jarvis Intent Extractor Engine
@@ -62,11 +144,8 @@ Responde de forma directa, conversacional, clara y concisa en español (máximo 
       return;
     }
 
-    const ai = getGemini();
-
-    if (ai) {
-      try {
-        const systemPrompt = `
+    try {
+      const systemPrompt = `
 Eres el motor de inteligencia y extracción de intenciones para "Jarvis Voice Assistant" en un smartphone Android.
 Tu función es interpretar el comando de voz del usuario (en español) y estructurarlo exactamente en formato JSON.
 
@@ -133,7 +212,7 @@ Ejemplos:
 - "enviale un mensaje por whatsapp a javier diciendole hola como estas" -> action: "send_whatsapp", params: { "contact": "Javier", "phoneNumber": "", "message": "Hola cómo estás" }, feedbackText: "Abriendo WhatsApp con el mensaje 'Hola cómo estás'. Selecciona a Javier en tus contactos para enviárselo."
 - "¿cuántos planetas hay en el sistema solar?" -> action: "general_query", params: { "query": "¿cuántos planetas hay en el sistema solar?" }, feedbackText: "El sistema solar consta de ocho planetas principales, siendo Mercurio el más cercano al Sol y Neptuno el más lejano."
 
-Devuelve un objeto JSON estricto con:
+Devuelve ÚNICAMENTE un objeto JSON estricto, SIN texto adicional, SIN markdown, SIN \`\`\`, con exactamente estas claves:
 {
   "action": string,
   "params": object,
@@ -143,42 +222,10 @@ Devuelve un objeto JSON estricto con:
 }
 `;
 
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: `Comando de voz del usuario: "${transcript}"`,
-          config: {
-            systemInstruction: systemPrompt,
-            responseMimeType: 'application/json',
-            temperature: 0.1,
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                action: { type: Type.STRING },
-                params: {
-                  type: Type.OBJECT,
-                  properties: {
-                    contact: { type: Type.STRING },
-                    phoneNumber: { type: Type.STRING },
-                    message: { type: Type.STRING },
-                    title: { type: Type.STRING },
-                    time: { type: Type.STRING },
-                    date: { type: Type.STRING },
-                    query: { type: Type.STRING },
-                    track: { type: Type.STRING },
-                    appName: { type: Type.STRING },
-                    command: { type: Type.STRING },
-                  },
-                },
-                confidence: { type: Type.NUMBER },
-                explanation: { type: Type.STRING },
-                feedbackText: { type: Type.STRING },
-              },
-              required: ['action', 'params', 'confidence', 'explanation', 'feedbackText'],
-            },
-          },
-        });
+      const result = await getAIResponse(systemPrompt, `Comando de voz del usuario: "${transcript}"`);
 
-        const jsonText = response.text ? response.text.trim() : '';
+      if (result) {
+        const jsonText = stripCodeFences(result.text);
         const parsed = JSON.parse(jsonText);
         const duration = Date.now() - startTime;
 
@@ -200,12 +247,12 @@ Devuelve un objeto JSON estricto con:
         res.json({
           intent: parsed,
           latencyMs: duration,
-          providerUsed: 'Gemini 3.6 Flash (Railway Server)',
+          providerUsed: result.provider,
         });
         return;
-      } catch (err) {
-        console.error('Error en Gemini Intent Parser, ejecutando motor de reglas inteligente:', err);
       }
+    } catch (err) {
+      console.error('Error en cascade de IA del Intent Parser, ejecutando motor de reglas local:', err);
     }
 
     // Fallback determinista ultra-inteligente (procesamiento local sin conexión)
